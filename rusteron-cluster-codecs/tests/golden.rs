@@ -58,7 +58,11 @@ fn join_log() {
     assert_eq!(HEADER + d.encoded_length(), bytes.len());
 
     let mut out = vec![0; bytes.len()];
-    let mut e = JoinLogEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = JoinLogEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.log_position(1_024)
         .max_log_position(4_096)
         .member_id(2)
@@ -110,7 +114,11 @@ fn request_service_ack() {
     assert_eq!(d.log_position(), 12_288);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = RequestServiceAckEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = RequestServiceAckEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.log_position(12_288);
     assert_eq!(out, bytes);
 }
@@ -126,8 +134,16 @@ fn service_ack() {
     assert_eq!(d.service_id(), 1);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = ServiceAckEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
-    e.log_position(2_048).timestamp(1_700_000_000_123).ack_id(3).relevant_id(77).service_id(1);
+    let mut e = ServiceAckEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
+    e.log_position(2_048)
+        .timestamp(1_700_000_000_123)
+        .ack_id(3)
+        .relevant_id(77)
+        .service_id(1);
     assert_eq!(out, bytes);
 }
 
@@ -139,7 +155,11 @@ fn schedule_timer() {
     assert_eq!(d.deadline(), 123_456_789);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = ScheduleTimerEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = ScheduleTimerEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.correlation_id(42).deadline(123_456_789);
     assert_eq!(out, bytes);
 }
@@ -151,7 +171,11 @@ fn cancel_timer() {
     assert_eq!(d.correlation_id(), 43);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = CancelTimerEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = CancelTimerEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.correlation_id(43);
     assert_eq!(out, bytes);
 }
@@ -163,7 +187,11 @@ fn close_session() {
     assert_eq!(d.cluster_session_id(), 7);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = CloseSessionEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = CloseSessionEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.cluster_session_id(7);
     assert_eq!(out, bytes);
 }
@@ -178,7 +206,11 @@ fn session_message_header() {
     assert_eq!(d.timestamp(), 111);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = SessionMessageHeaderEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = SessionMessageHeaderEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.leadership_term_id(5).cluster_session_id(9).timestamp(111);
     assert_eq!(out, bytes);
 }
@@ -192,7 +224,11 @@ fn timer_event() {
     assert_eq!(d.timestamp(), 222);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = TimerEventEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = TimerEventEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.leadership_term_id(6).correlation_id(44).timestamp(222);
     assert_eq!(out, bytes);
 }
@@ -213,7 +249,11 @@ fn session_open_event() {
     assert_eq!(HEADER + d.encoded_length(), bytes.len());
 
     let mut out = vec![0; bytes.len()];
-    let mut e = SessionOpenEventEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = SessionOpenEventEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.leadership_term_id(7)
         .correlation_id(45)
         .cluster_session_id(10)
@@ -234,8 +274,15 @@ fn session_close_event() {
     assert_eq!(d.close_reason(), CloseReason::TIMEOUT);
 
     let mut out = vec![0; bytes.len()];
-    let mut e = SessionCloseEventEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
-    e.leadership_term_id(8).cluster_session_id(11).timestamp(444).close_reason(CloseReason::TIMEOUT);
+    let mut e = SessionCloseEventEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
+    e.leadership_term_id(8)
+        .cluster_session_id(11)
+        .timestamp(444)
+        .close_reason(CloseReason::TIMEOUT);
     assert_eq!(out, bytes);
 }
 
@@ -250,8 +297,16 @@ fn cluster_action_request() {
     assert_eq!(d.flags(), Some(0));
 
     let mut out = vec![0; bytes.len()];
-    let mut e = ClusterActionRequestEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
-    e.leadership_term_id(9).log_position(16_384).timestamp(555).action(ClusterAction::SNAPSHOT).flags(0);
+    let mut e = ClusterActionRequestEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
+    e.leadership_term_id(9)
+        .log_position(16_384)
+        .timestamp(555)
+        .action(ClusterAction::SNAPSHOT)
+        .flags(0);
     assert_eq!(out, bytes);
 }
 
@@ -269,8 +324,11 @@ fn new_leadership_term_event() {
     assert_eq!(d.app_version(), Some(version(1, 2, 3)));
 
     let mut out = vec![0; bytes.len()];
-    let mut e =
-        NewLeadershipTermEventEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = NewLeadershipTermEventEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.leadership_term_id(10)
         .log_position(20_480)
         .timestamp(666)
@@ -297,8 +355,11 @@ fn membership_change_event() {
     assert_eq!(d.cluster_members_slice(members), MEMBERS.as_bytes());
 
     let mut out = vec![0; bytes.len()];
-    let mut e =
-        MembershipChangeEventEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = MembershipChangeEventEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.leadership_term_id(11)
         .log_position(24_576)
         .timestamp(777)
@@ -323,7 +384,11 @@ fn snapshot_marker() {
     assert_eq!(d.app_version(), Some(version(0, 0, 1)));
 
     let mut out = vec![0; bytes.len()];
-    let mut e = SnapshotMarkerEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = SnapshotMarkerEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.type_id(2)
         .log_position(28_672)
         .leadership_term_id(12)
@@ -347,7 +412,11 @@ fn client_session() {
     assert_eq!(HEADER + d.encoded_length(), bytes.len());
 
     let mut out = vec![0; bytes.len()];
-    let mut e = ClientSessionEncoder::default().wrap(WriteBuf::new(&mut out), HEADER).header(0).parent().unwrap();
+    let mut e = ClientSessionEncoder::default()
+        .wrap(WriteBuf::new(&mut out), HEADER)
+        .header(0)
+        .parent()
+        .unwrap();
     e.cluster_session_id(12)
         .response_stream_id(103)
         .response_channel(RESPONSE_CHANNEL.as_bytes())
@@ -361,12 +430,21 @@ fn mark_file_header() {
         cluster_component_type::ClusterComponentType, mark_file_header_codec::*,
         message_header_codec::MessageHeaderDecoder,
     };
-    const STRINGS: [&str; 6] =
-        ["/tmp/aeron-node", "aeron:ipc?term-length=128k", "", "rusteron-service", "", "/tmp/cluster"];
+    const STRINGS: [&str; 6] = [
+        "/tmp/aeron-node",
+        "aeron:ipc?term-length=128k",
+        "",
+        "rusteron-service",
+        "",
+        "/tmp/cluster",
+    ];
 
     let bytes = fixture("mark_file_header");
     let header = MessageHeaderDecoder::default().wrap(mark::ReadBuf::new(&bytes), 0);
-    assert_eq!((header.template_id(), header.schema_id(), header.version()), (200, 110, 2));
+    assert_eq!(
+        (header.template_id(), header.schema_id(), header.version()),
+        (200, 110, 2)
+    );
     assert_eq!(header.block_length(), 128);
     let mut d = MarkFileHeaderDecoder::default().header(header, 0);
     assert_eq!(d.version(), version(0, 3, 0));
@@ -399,7 +477,10 @@ fn mark_file_header() {
 
     let mut out = vec![0; bytes.len()];
     let mut e = MarkFileHeaderEncoder::default()
-        .wrap(mark::WriteBuf::new(&mut out), mark::message_header_codec::ENCODED_LENGTH)
+        .wrap(
+            mark::WriteBuf::new(&mut out),
+            mark::message_header_codec::ENCODED_LENGTH,
+        )
         .header(0)
         .parent()
         .unwrap();

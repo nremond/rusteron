@@ -11,7 +11,9 @@
 
 #![forbid(unsafe_code)]
 
+#[rustfmt::skip]
 #[allow(unused_imports, dead_code, unused_mut, clippy::all)]
 pub mod cluster;
+#[rustfmt::skip]
 #[allow(unused_imports, dead_code, unused_mut, clippy::all)]
 pub mod mark;
