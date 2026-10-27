@@ -28,9 +28,10 @@ import java.util.concurrent.TimeUnit;
  * A Java Aeron Cluster 1.53.3 client on an external media driver: sends COUNT
  * messages, each its sequence number, and waits for each echo in order.
  * Prints {@code OK} and exits 0 when all came back, exits 1 otherwise.
+ * FIRST, if given, is sent once before them: a command for the service, not echoed.
  *
  * <pre>
- * java EchoClient.java AERON_DIR PORT_BASE NODES COUNT
+ * java EchoClient.java AERON_DIR PORT_BASE NODES COUNT [FIRST]
  * </pre>
  */
 public final class EchoClient implements EgressListener
@@ -44,6 +45,7 @@ public final class EchoClient implements EgressListener
         final int portBase = Integer.parseInt(args[1]);
         final int nodes = Integer.parseInt(args[2]);
         final long count = Long.parseLong(args[3]);
+        final String first = args.length > 4 ? args[4] : null;
 
         final EchoClient client = new EchoClient();
         final IdleStrategy idle = new BackoffIdleStrategy();
@@ -58,6 +60,14 @@ public final class EchoClient implements EgressListener
             .ingressEndpoints(JavaNode.ingressEndpoints(portBase, nodes))
             .messageTimeoutNs(TimeUnit.SECONDS.toNanos(10))))
         {
+            if (null != first)
+            {
+                final int length = buffer.putStringWithoutLengthAscii(0, first);
+                while (cluster.offer(buffer, 0, length) < 0)
+                {
+                    idle.idle(cluster.pollEgress());
+                }
+            }
             for (long sent = 0; sent < count; )
             {
                 buffer.putLong(0, sent);

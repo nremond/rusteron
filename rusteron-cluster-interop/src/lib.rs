@@ -5,6 +5,7 @@
 //!   timer one tick later, its id the message's position × 2 + the service
 //!   id; every 25th sends a service message.
 //! - `close` closes the session.
+//! - `timers` schedules 10,000 timers at once, each one tick later.
 //! - Every entry applied is a trace line, and folds into a hash.
 //! - The snapshot is the count and the hash, 16 bytes.
 
@@ -17,6 +18,8 @@ use rusteron_cluster::*;
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+/// How many timers `timers` schedules at once.
+const TIMERS: i64 = 10_000;
 
 pub fn fnv(bytes: &[u8]) -> u64 {
     bytes
@@ -105,6 +108,13 @@ impl ClusteredService for TestService {
         let Some(session_id) = m.session_id else {
             return Apply::Done;
         };
+        if m.payload == b"timers" {
+            let service_id = cx.service_id() as i64;
+            for i in 0..TIMERS {
+                cx.schedule_timer(m.log_position * 2 * TIMERS + i * 2 + service_id, m.timestamp + 1);
+            }
+            return Apply::Done;
+        }
         if m.payload == b"close" {
             let _ = cx.close_session(session_id);
             return Apply::Done;

@@ -39,6 +39,7 @@ import java.nio.charset.StandardCharsets;
  *     schedules a timer one tick later, its id the message's position × 2 +
  *     the service id; every 25th sends a service message.</li>
  *     <li>"close" closes the session.</li>
+ *     <li>"timers" schedules 10,000 timers at once, each one tick later.</li>
  *     <li>Every entry applied is a trace line, and folds into a hash.</li>
  *     <li>The snapshot is the count and the hash, 16 bytes.</li>
  * </ul>
@@ -47,6 +48,7 @@ public final class OracleService implements ClusteredService
 {
     static final long FNV_OFFSET = 0xcbf29ce484222325L;
     static final long FNV_PRIME = 0x100000001b3L;
+    static final int TIMERS = 10_000;
 
     private final FileOutputStream trace;
     private final ExpandableArrayBuffer buffer = new ExpandableArrayBuffer(64);
@@ -145,6 +147,17 @@ public final class OracleService implements ClusteredService
             " " + Long.toHexString(fnv(payload, 0, length)));
         if (null == session)
         {
+            return;
+        }
+        if (length == 6 && "timers".equals(new String(payload, StandardCharsets.US_ASCII)))
+        {
+            for (int i = 0; i < TIMERS; i++)
+            {
+                while (!cluster.scheduleTimer(position * 2 * TIMERS + i * 2 + cluster.context().serviceId(), timestamp + 1))
+                {
+                    cluster.idleStrategy().idle();
+                }
+            }
             return;
         }
         if (length == 5 && "close".equals(new String(payload, StandardCharsets.US_ASCII)))
