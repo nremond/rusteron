@@ -92,6 +92,11 @@ start_nodes() {
 
 # A node killed is its machine gone: its media driver with it, or the driver
 # keeps the dead processes' endpoints alive for its client liveness timeout.
+restart_driver() { # n
+  start_driver "$WORK/aeron-$1" "$WORK/driver-$1.log"
+  driver_pid[$1]=${pids[${#pids[@]} - 1]}
+}
+
 kill_node() { # n
   kill -9 "${java_pid[$1]}" "${rust_pid[$1]}" "${driver_pid[$1]}" 2>/dev/null || true
   wait "${java_pid[$1]}" "${rust_pid[$1]}" "${driver_pid[$1]}" 2>/dev/null || true
@@ -151,6 +156,7 @@ case "$SCENARIO" in
     for ((n = 0; n < NODES; n++)); do kill_node "$n"; done
     # Aeron refuses to start over a mark file active in the last 10 s, the Rust container as Java's archive does.
     sleep 11
+    for ((n = 0; n < NODES; n++)); do restart_driver "$n"; done
     start_nodes
     client "$COUNT"
     ;;
@@ -170,8 +176,7 @@ case "$SCENARIO" in
     client "$COUNT"
     [[ $leader != "$killed" ]] || fail "node $killed still leads"
     sleep $((killed_at + 11 - SECONDS > 0 ? killed_at + 11 - SECONDS : 0))
-    start_driver "$WORK/aeron-$killed" "$WORK/driver-$killed.log"
-    driver_pid[killed]=${pids[${#pids[@]} - 1]}
+    restart_driver "$killed"
     start_node "$killed"
     await_node "$killed"
     client "$COUNT"
