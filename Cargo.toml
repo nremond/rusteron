@@ -5,6 +5,7 @@ members = [
     "rusteron-media-driver/links-test",
     "rusteron-client",
     "rusteron-archive",
+    "rusteron-cluster-codecs",
 ]
 exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
 resolver = "2"
