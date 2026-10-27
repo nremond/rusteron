@@ -57,6 +57,21 @@ public final class JavaNode
 
     public static void main(final String[] args)
     {
+        // The barrier's shutdown hook holds the JVM until the barrier is closed: closed on every way out, a node
+        // that failed to launch exits too.
+        final ShutdownSignalBarrier barrier = new ShutdownSignalBarrier();
+        try
+        {
+            run(args, barrier);
+        }
+        finally
+        {
+            barrier.close();
+        }
+    }
+
+    static void run(final String[] args, final ShutdownSignalBarrier barrier)
+    {
         final File root = new File(args[0]);
         final int nodeId = Integer.parseInt(args[1]);
         final int nodes = Integer.parseInt(args[2]);
@@ -66,7 +81,6 @@ public final class JavaNode
         final String javaServices = args[6];
 
         final File dir = new File(root, "node" + nodeId);
-        final ShutdownSignalBarrier barrier = new ShutdownSignalBarrier();
 
         final Archive.Context archiveContext = new Archive.Context()
             .aeronDirectoryName(aeronDir)
@@ -110,12 +124,15 @@ public final class JavaNode
             {
                 final String[] idAndKind = spec.split("=");
                 final int serviceId = Integer.parseInt(idAndKind[0]);
+                final String kind = idAndKind[1];
+                final String trace = new File(root, "node" + nodeId + "-service" + serviceId + ".trace").getPath();
                 containers.add(ClusteredServiceContainer.launch(new ClusteredServiceContainer.Context()
                     .aeronDirectoryName(aeronDir)
                     .archiveContext(archiveClient.clone())
                     .clusterDir(new File(dir, "cluster"))
                     .serviceId(serviceId)
-                    .clusteredService(service(idAndKind[1]))
+                    .isRespondingService(!kind.endsWith("-silent"))
+                    .clusteredService(service(kind, trace))
                     .terminationHook(() -> {})
                     .errorHandler(Throwable::printStackTrace)));
             }
@@ -128,17 +145,24 @@ public final class JavaNode
         containers.forEach(CloseHelper::quietClose);
         CloseHelper.quietCloseAll(consensusModule, archive);
         System.out.println("STOPPED node=" + nodeId);
-        // The barrier's shutdown hook waits for it to be closed before the JVM may exit on a signal.
-        barrier.close();
     }
 
-    static ClusteredService service(final String kind)
+    /**
+     * A service: {@code echo}, or {@code oracle} (the twin of the Rust test
+     * service, tracing to {@code trace}); {@code -silent} after either answers
+     * no client.
+     */
+    static ClusteredService service(final String kind, final String trace)
     {
-        if ("echo".equals(kind))
+        switch (kind.replace("-silent", ""))
         {
-            return new EchoService();
+            case "echo":
+                return new EchoService();
+            case "oracle":
+                return new OracleService(trace);
+            default:
+                throw new IllegalArgumentException("unknown service kind: " + kind);
         }
-        throw new IllegalArgumentException("unknown service kind: " + kind);
     }
 
     static int port(final int portBase, final int nodeId, final int offset)

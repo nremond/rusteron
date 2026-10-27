@@ -1,0 +1,17 @@
+[package]
+name = "rusteron-cluster-interop"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "Runs rusteron-cluster against Java Aeron Cluster 1.53.3: the Rust service container beside Java's, on the same log."
+
+[features]
+static = ["rusteron-cluster/static"]
+
+[dependencies]
+rusteron-cluster = { path = "../rusteron-cluster" }
+
+[[bin]]
+name = "rust_service_node"
+path = "src/bin/rust_service_node.rs"

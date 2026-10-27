@@ -7,6 +7,8 @@ members = [
     "rusteron-archive",
     "rusteron-cluster-codecs",
     "rusteron-cluster-core",
+    "rusteron-cluster",
+    "rusteron-cluster-interop",
 ]
 exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
 resolver = "2"

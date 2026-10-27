@@ -65,8 +65,9 @@ const CLUSTER_ACTION_FLAGS_STANDBY_SNAPSHOT: i32 = 1;
 pub struct Config {
     pub service_id: i32,
     pub cluster_id: i32,
-    /// The service's version, `major << 16 | minor << 8 | patch`: a log or
-    /// snapshot of another major version stops the service.
+    /// The service's version, `major << 16 | minor << 8 | patch`, written in
+    /// its snapshots: a log or snapshot of another major version stops the
+    /// service. Java's default is 0.0.1.
     pub app_version: i32,
     /// Whether the service answers clients. A second service on the same log
     /// that only observes says no.
@@ -91,7 +92,7 @@ impl Default for Config {
         Self {
             service_id: 0,
             cluster_id: 0,
-            app_version: 0,
+            app_version: 1,
             responding: true,
             snapshot_channel: "aeron:ipc?alias=snapshot".into(),
             snapshot_stream_id: 106,
@@ -717,6 +718,12 @@ impl<S: ClusteredService> Container<S> {
     /// The Aeron client closed under the container: it stops at once.
     pub fn on_aeron_closed(&mut self) {
         self.fail_stop("unexpected Aeron close".into());
+    }
+
+    /// Something the container cannot live through happened outside it (a
+    /// service that panicked, I/O that failed for good): it stops at once.
+    pub fn on_fatal(&mut self, message: String) {
+        self.fail_stop(message);
     }
 
     // ----- I/O -----
