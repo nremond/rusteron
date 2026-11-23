@@ -1709,11 +1709,19 @@ impl ConsensusModule {
 
     fn service_message(&mut self, message: ServiceMessage, ports: &mut impl Ports) -> Outcome<()> {
         match message {
-            ServiceMessage::Message { service_id, message } => {
-                if let Some(tracker) = usize::try_from(service_id).ok().and_then(|i| self.trackers.get_mut(i)) {
-                    tracker.enqueue(&message);
-                }
-            }
+            ServiceMessage::Message {
+                service_id,
+                cluster_session_id,
+                message,
+            } => match usize::try_from(service_id).ok().and_then(|i| self.trackers.get_mut(i)) {
+                Some(tracker) => tracker.enqueue(&message),
+                // Reported and dropped, as Java 1.54 does.
+                None => self.warn(format!(
+                    "service message dropped, unknown serviceId={service_id} clusterSessionId={cluster_session_id} \
+                     serviceCount={}",
+                    self.trackers.len()
+                )),
+            },
             ServiceMessage::CloseSession { cluster_session_id } => {
                 let is_active_leader = self.role == Role::Leader && self.state == ModuleState::Active;
                 let term = self.term();
@@ -1780,7 +1788,14 @@ impl ConsensusModule {
         service_id: i32,
         ports: &mut impl Ports,
     ) -> Outcome<()> {
-        let index = usize::try_from(service_id).map_err(|_| format!("invalid serviceId={service_id}"))?;
+        let service_count = self.service_acks.service_count();
+        let Some(index) = usize::try_from(service_id).ok().filter(|&i| i < service_count) else {
+            // Reported and dropped, as Java 1.54 does: no election started over for it.
+            self.warn(format!(
+                "service ack dropped, unknown serviceId={service_id} ackId={ack_id} serviceCount={service_count}"
+            ));
+            return Ok(());
+        };
         if ack_id == 0 && self.service_client_ids.get(index).is_some_and(|&id| id != NULL_VALUE) {
             return Err(Fault::Error(format!(
                 "initial ack already received from service: possible duplicate serviceId={service_id}"
@@ -2093,6 +2108,15 @@ impl ConsensusModule {
                         return Err(Fault::Error(e));
                     }
                 }
+            } else if self.state == ModuleState::Snapshot
+                && self.config.service_count == 0
+                && ports.log_position() <= self.commit_position
+                && self.take_snapshot.is_none()
+            {
+                // As soon as its action is committed, not at the next slow tick (Java 1.54).
+                let position = self.commit_position;
+                self.snapshot_on_service_ack(position, self.timestamp(), Vec::new());
+                work += 1;
             }
             work += self.update_leader_position(ports)?;
         } else {
@@ -2343,16 +2367,8 @@ impl ConsensusModule {
                 }
                 Ok(1)
             }
-            ModuleState::Snapshot => {
-                if self.config.service_count == 0
-                    && ports.log_position() <= self.commit_position
-                    && self.take_snapshot.is_none()
-                {
-                    let position = self.commit_position;
-                    self.snapshot_on_service_ack(position, self.timestamp(), Vec::new());
-                }
-                Ok(0)
-            }
+            // A leader with no service snapshots in its consensus work (Java 1.54).
+            ModuleState::Snapshot => Ok(0),
             ModuleState::Suspended => {
                 if ports.control_toggle() == toggle::RESUME {
                     if self.append_action(ClusterAction::RESUME, log::CLUSTER_ACTION_FLAGS_DEFAULT, ports)? {

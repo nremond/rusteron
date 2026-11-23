@@ -2,7 +2,9 @@
 //! started on an empty log, its clients' sessions and messages in the log,
 //! a snapshot, a restart from it, a shutdown, a service gone.
 
-use rusteron_cluster_codecs::cluster::{WriteBuf, session_connect_request_codec, session_message_header_codec};
+use rusteron_cluster_codecs::cluster::{
+    WriteBuf, message_header_codec, service_ack_codec, session_connect_request_codec, session_message_header_codec,
+};
 use rusteron_cluster_core::log::Fragment;
 use rusteron_cluster_core::position::UNFRAGMENTED;
 use rusteron_cluster_core::recording_log::{ENTRY_TYPE_SNAPSHOT, ENTRY_TYPE_TERM, RecordingLog};
@@ -268,6 +270,64 @@ fn a_service_gone_ends_the_node() {
             .iter()
             .any(|e| e == "Aeron client in service closed unexpectedly: serviceId=0")
     );
+}
+
+/// Java 1.54: a leader with no service takes its snapshot as soon as the
+/// snapshot's action is committed, in its consensus work, not at its next
+/// slow tick (10 ms on).
+#[test]
+fn a_node_without_services_snapshots_once_its_action_is_committed() {
+    let mut node = FakeNode::new(Config {
+        service_count: 0,
+        ..config()
+    });
+    node.run(20);
+    assert_eq!(node.module.state(), ModuleState::Active, "errors: {:?}", node.errors);
+    node.ports.toggle = toggle::SNAPSHOT;
+    let mut cycles = 0;
+    while node.module.state() != ModuleState::Snapshot {
+        node.run(1);
+        cycles += 1;
+        assert!(cycles < 20, "no snapshot action: {:?}", node.errors);
+    }
+    let mut after = 0;
+    while node.ports.counter(CounterId::SnapshotCount) == 0 {
+        node.run(1);
+        after += 1;
+        assert!(after < 30, "no snapshot: {:?}", node.errors);
+    }
+    assert!(after < 10, "the snapshot waited {after} cycles, as for a slow tick");
+    assert!(node.errors.is_empty(), "{:?}", node.errors);
+}
+
+/// Java 1.54: a service message or ack naming a service the node does not
+/// have is reported and dropped; the node carries on, its election not
+/// started over.
+#[test]
+fn a_message_or_ack_from_an_unknown_service_is_dropped() {
+    let mut node = started();
+    // A service message sent as service 3 of a one-service node.
+    let message = rusteron_consensus_core::log::session_message_header(0, 3, 0);
+    node.module.on_service_message(&message, &mut node.ports);
+    let mut ack = vec![0; message_header_codec::ENCODED_LENGTH + service_ack_codec::SBE_BLOCK_LENGTH as usize];
+    let mut e = service_ack_codec::ServiceAckEncoder::default()
+        .wrap(WriteBuf::new(&mut ack), message_header_codec::ENCODED_LENGTH)
+        .header(0)
+        .parent()
+        .unwrap();
+    e.log_position(0).timestamp(0).ack_id(7).relevant_id(-1).service_id(3);
+    node.module.on_service_message(&ack, &mut node.ports);
+    node.run(20);
+    assert_eq!(
+        node.errors,
+        [
+            "service message dropped, unknown serviceId=3 clusterSessionId=3 serviceCount=1",
+            "service ack dropped, unknown serviceId=3 ackId=7 serviceCount=1",
+        ]
+    );
+    assert_eq!(node.terminated, None);
+    assert_eq!(node.module.state(), ModuleState::Active);
+    assert_eq!(node.module.role(), Role::Leader);
 }
 
 /// Java's `pollArchiveEvents`: a node whose archive died would no longer

@@ -21,6 +21,7 @@ pub enum ServiceMessage {
     /// `service_id` is what the service put as its session id.
     Message {
         service_id: i32,
+        cluster_session_id: i64,
         message: Vec<u8>,
     },
     CloseSession {
@@ -62,6 +63,7 @@ pub fn decode(message: &[u8]) -> Result<ServiceMessage, String> {
             let d = session_message_header_codec::SessionMessageHeaderDecoder::default().header(header(), 0);
             ServiceMessage::Message {
                 service_id: d.cluster_session_id() as i32,
+                cluster_session_id: d.cluster_session_id(),
                 message: message.to_vec(),
             }
         }
@@ -262,6 +264,11 @@ impl ServiceAcks {
         Self {
             queues: vec![VecDeque::new(); service_count],
         }
+    }
+
+    /// How many services' acks it queues.
+    pub fn service_count(&self) -> usize {
+        self.queues.len()
     }
 
     pub fn push(&mut self, service_id: usize, ack: ServiceAck) -> Result<(), String> {
