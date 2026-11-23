@@ -28,11 +28,15 @@ export RUSTFLAGS="-C target-cpu=x86-64"
 
 echo "=== Phase 1: build test binaries ==="
 # --no-run builds but does not execute; --message-format=json lets us extract
-# the exact paths of the compiled test executables via jq.
+# the exact paths of the compiled test executables via jq. The cluster's
+# codecs and sans-IO cores are pure Rust, calling no Aeron C: Valgrind has
+# nothing to check there, and the simulator's seeds alone outlast the job.
 BINARIES=$(
   COPY_BINDINGS=true \
   "$CARGO" test --workspace --no-run --message-format=json \
-  | jq -r 'select(.reason == "compiler-artifact" and .profile.test == true and .executable != null) | .executable'
+  | jq -r 'select(.reason == "compiler-artifact" and .profile.test == true and .executable != null)
+      | select(.manifest_path | test("/rusteron-(archive-codecs|cluster-codecs|cluster-core|archive-core|consensus-core|cluster-sim)/Cargo.toml$") | not)
+      | .executable'
 )
 
 if [[ -z "$BINARIES" ]]; then
