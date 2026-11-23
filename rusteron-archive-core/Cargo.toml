@@ -1,0 +1,22 @@
+[package]
+name = "rusteron-archive-core"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/nremond/rusteron"
+readme = "README.md"
+description = "Aeron Archive's server as sans-IO state machines, wire- and on-disk-compatible with Aeron 1.53.3: the catalog, the segment files, the control protocol."
+keywords = ["aeron", "aeron-archive", "sans-io"]
+categories = ["network-programming"]
+
+[features]
+# A client's requests and a decoder of the archive's responses, for tests.
+testkit = []
+
+[dependencies]
+rusteron-archive-codecs = { path = "../rusteron-archive-codecs", version = "0.1.0" }
+rusteron-cluster-core = { path = "../rusteron-cluster-core", version = "0.1.0" }
+
+[dev-dependencies]
+proptest = { workspace = true }
+rusteron-archive-core = { path = ".", features = ["testkit"] }

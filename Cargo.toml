@@ -6,6 +6,7 @@ members = [
     "rusteron-client",
     "rusteron-archive",
     "rusteron-archive-codecs",
+    "rusteron-archive-core",
     "rusteron-cluster-codecs",
     "rusteron-cluster-core",
 ]

@@ -1,0 +1,18 @@
+0	whole-stopped	VALID	2208	1700000009499	-
+1	whole-active	VALID	3232	1700000009999	-
+2	stop-behind	VALID	2208	1700000009999	-
+3	stop-ahead	VALID	2208	1700000009999	-
+4	negative-start	INVALID	-1	-1	Negative startPosition=-64
+5	unaligned-start	INVALID	-1	-1	Non-aligned startPosition=100
+6	stop-before-start	INVALID	1024	1700000009499	Invariant violation stopPosition=1024 is before startPosition=4096
+7	unaligned-stop	INVALID	200	1700000009499	Non-aligned stopPosition=200
+8	past-last-segment	INVALID	65600	1700000009499	Invariant violation: startPosition=0 and/or stopPosition=65600 exceed max segment file position=65535
+9	wrong-term-id	INVALID	2208	1700000009499	fragment termOffset=128 (expected=128), termId=99 (expected=5), streamId=100 (expected=100)
+10	wrong-stream	INVALID	2208	1700000009499	fragment termOffset=0 (expected=0), termId=5 (expected=5), streamId=101 (expected=100)
+11	data-cut-short	INVALID	128	1700000009499	failed to read 1984 byte(s) of data at offset 160
+12	later-segment	VALID	139072	1700000009499	-
+13	empty-last-segment	INVALID	-1	-1	failed to read fragment header
+14	torn-active	VALID	4000	1700000009999	-
+15	invalid-whole	VALID	2208	1700000009499	-
+16	invalid-without-files	INVALID	0	1700000009499	-
+17	deleted	DELETED	2208	1700000009499	-
