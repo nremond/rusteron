@@ -1,0 +1,6 @@
+101	2a00000000000000	Archive Errors - archiveId=42 version=1.53.3 commit=377943bcb8
+102	2a00000000000000	Archive Control Sessions - archiveId=42
+103	f9ffffffffffffff	archive-conductor max cycle time in ns: SHARED - archiveId=-7
+100	00000000000000004d000000090000006165726f6e3a6970632a00000000000000	rec-pos: 0 77 1001 aeron:ipc?alias=log - archiveId=42
+100	351cdcdf02000000fbffffff580000003132372e302e302e313a3939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939393939390000000000000080	rec-pos: 12345678901 -5 7 aeron:udp?endpoint=localhost:20121|alias=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx - archiveId=-9223372036854775808
+113	2a00000000000000581b000000000000	control-session: name=test version=1.53.3 commit=377943bcb8 sourceIdentity=aeron:ipc sessionId=-321 - archiveId=42

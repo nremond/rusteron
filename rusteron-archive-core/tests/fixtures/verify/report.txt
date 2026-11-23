@@ -1,0 +1,18 @@
+(recordingId=0) OK
+(recordingId=1) OK
+(recordingId=2) OK
+(recordingId=3) OK
+(recordingId=4) ERR: Negative startPosition=-64
+(recordingId=5) ERR: Non-aligned startPosition=100
+(recordingId=6) ERR: Invariant violation stopPosition=1024 is before startPosition=4096
+(recordingId=7) ERR: Non-aligned stopPosition=200
+(recordingId=8) ERR: Invariant violation: startPosition=0 and/or stopPosition=65600 exceed max segment file position=65535
+(recordingId=9, file=rusteron-archive-core/tests/fixtures/verify/after/9-0.rec) ERR: fragment termOffset=128 (expected=128), termId=99 (expected=5), streamId=100 (expected=100)
+(recordingId=10, file=rusteron-archive-core/tests/fixtures/verify/after/10-0.rec) ERR: fragment termOffset=0 (expected=0), termId=5 (expected=5), streamId=101 (expected=100)
+(recordingId=11, file=rusteron-archive-core/tests/fixtures/verify/after/11-0.rec) ERR: failed to read 1984 byte(s) of data at offset 160
+(recordingId=12) OK
+(recordingId=13, file=rusteron-archive-core/tests/fixtures/verify/after/13-65536.rec) ERR: failed to read fragment header
+(recordingId=14) OK
+(recordingId=15) OK
+(recordingId=16) OK
+(recordingId=17) skipping: DELETED
