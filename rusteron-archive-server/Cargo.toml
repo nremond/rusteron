@@ -1,0 +1,28 @@
+[package]
+name = "rusteron-archive-server"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/nremond/rusteron"
+readme = "README.md"
+description = "Aeron Archive's server on Aeron's C client, wire- and on-disk-compatible with Aeron 1.53.3: the requests Aeron Cluster makes of its archive."
+keywords = ["aeron", "aeron-archive", "aeron-cluster", "low-latency"]
+categories = ["network-programming"]
+
+[features]
+default = []
+# Links Aeron C statically, as rusteron-archive's own feature.
+static = ["rusteron-archive/static"]
+
+[dependencies]
+ctrlc = { workspace = true, features = ["termination"] }
+libc = "0.2"
+log = { workspace = true }
+rusteron-archive = { path = "../rusteron-archive", version = "0.2.13" }
+rusteron-archive-codecs = { path = "../rusteron-archive-codecs", version = "0.1.0" }
+rusteron-archive-core = { path = "../rusteron-archive-core", version = "0.1.0" }
+rusteron-cluster-core = { path = "../rusteron-cluster-core", version = "0.1.0" }
+
+[[bin]]
+name = "aeron_archive"
+path = "src/bin/aeron_archive.rs"
