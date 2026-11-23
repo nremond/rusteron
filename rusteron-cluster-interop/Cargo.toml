@@ -1,0 +1,34 @@
+[package]
+name = "rusteron-cluster-interop"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "Runs rusteron-cluster against Java Aeron Cluster 1.53.3: the Rust service container beside Java's, on the same log."
+
+[features]
+static = ["rusteron-cluster/static"]
+
+[dependencies]
+hdrhistogram = { workspace = true }
+rusteron-cluster = { path = "../rusteron-cluster" }
+
+[[bin]]
+name = "rust_service_node"
+path = "src/bin/rust_service_node.rs"
+
+[[bin]]
+name = "rust_bench_node"
+path = "src/bin/rust_bench_node.rs"
+
+[[bin]]
+name = "echo_client"
+path = "src/bin/echo_client.rs"
+
+[[bin]]
+name = "bench_client"
+path = "src/bin/bench_client.rs"
+
+[[bin]]
+name = "client_lines"
+path = "src/bin/client_lines.rs"

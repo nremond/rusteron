@@ -1,0 +1,2664 @@
+diff -ruN orig/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterSessionReliabilityTest.java new/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterSessionReliabilityTest.java
+--- orig/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterSessionReliabilityTest.java	2026-10-31 18:07:45
++++ new/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterSessionReliabilityTest.java	2026-10-31 18:07:45
+@@ -264,7 +264,7 @@
+                 udpChannel, dispatcher, statusIndicator, context, lossGenerator, lossGenerator);
+     }
+ 
+-    private static class SequenceCheckingService extends TestNode.TestService
++    static class SequenceCheckingService extends TestNode.TestService
+     {
+         private final Long2LongHashMap nextSequenceBySessionId = new Long2LongHashMap(-1);
+         private final AtomicLong outOfSequenceCount;
+@@ -308,7 +308,7 @@
+         }
+     }
+ 
+-    private static class SequencedEgressService extends TestNode.TestService
++    static class SequencedEgressService extends TestNode.TestService
+     {
+         private static final long TIMER_CORRELATION_ID = 1;
+ 
+@@ -379,10 +379,10 @@
+         }
+     }
+ 
+-    private static final class SequenceCheckingEgressListener implements EgressListener
++    static final class SequenceCheckingEgressListener implements EgressListener
+     {
+-        private long outOfSequenceCount;
+-        private long nextSequence;
++        long outOfSequenceCount;
++        long nextSequence;
+ 
+         public void onMessage(
+             final long clusterSessionId,
+diff -ruN orig/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterTest.java new/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterTest.java
+--- orig/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterTest.java	2026-10-30 13:02:05
++++ new/aeron-system-tests/src/test/java/io/aeron/cluster/ClusterTest.java	2026-10-30 13:03:45
+@@ -183,9 +183,9 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         final TestNode leader = cluster.awaitLeader();
+-        assertEquals(1, leader.consensusModule().context().electionCounter().get());
++        assertEquals(1, leader.consensusModuleContext().electionCounter().get());
+         TestNode follower = cluster.followers().get(0);
+-        assertEquals(1, follower.consensusModule().context().electionCounter().get());
++        assertEquals(1, follower.consensusModuleContext().electionCounter().get());
+ 
+         awaitElectionClosed(follower);
+         cluster.stopNode(follower);
+@@ -194,8 +194,8 @@
+ 
+         awaitElectionClosed(follower);
+         assertEquals(FOLLOWER, follower.role());
+-        assertEquals(1 /* new counter */, follower.consensusModule().context().electionCounter().get());
+-        assertEquals(1, leader.consensusModule().context().electionCounter().get());
++        assertEquals(1 /* new counter */, follower.consensusModuleContext().electionCounter().get());
++        assertEquals(1, leader.consensusModuleContext().electionCounter().get());
+     }
+ 
+     @Test
+@@ -206,9 +206,9 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         final TestNode leader = cluster.awaitLeader();
+-        assertEquals(1, leader.consensusModule().context().electionCounter().get());
++        assertEquals(1, leader.consensusModuleContext().electionCounter().get());
+         final TestNode follower = cluster.followers().get(0);
+-        assertEquals(1, follower.consensusModule().context().electionCounter().get());
++        assertEquals(1, follower.consensusModuleContext().electionCounter().get());
+         awaitElectionClosed(follower);
+ 
+         cluster.connectClient();
+@@ -225,14 +225,14 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         final TestNode leader = cluster.awaitLeader();
+-        assertEquals(1, leader.consensusModule().context().electionCounter().get());
+-        final long leadershipTermId = leader.consensusModule().context().leadershipTermIdCounter().get();
++        assertEquals(1, leader.consensusModuleContext().electionCounter().get());
++        final long leadershipTermId = leader.consensusModuleContext().leadershipTermIdCounter().get();
+         assertNotEquals(-1, leadershipTermId);
+         final List<TestNode> followers = cluster.followers();
+         for (final TestNode follower : followers)
+         {
+-            assertEquals(1, follower.consensusModule().context().electionCounter().get());
+-            assertEquals(leadershipTermId, follower.consensusModule().context().leadershipTermIdCounter().get());
++            assertEquals(1, follower.consensusModuleContext().electionCounter().get());
++            assertEquals(leadershipTermId, follower.consensusModuleContext().leadershipTermIdCounter().get());
+         }
+ 
+         cluster.connectClient();
+@@ -241,11 +241,11 @@
+         cluster.stopNode(leader);
+         cluster.awaitNewLeadershipEvent(1);
+         final TestNode leader2 = cluster.awaitLeader();
+-        final long leadershipTermId2 = leader2.consensusModule().context().leadershipTermIdCounter().get();
++        final long leadershipTermId2 = leader2.consensusModuleContext().leadershipTermIdCounter().get();
+         for (final TestNode follower : followers)
+         {
+-            assertEquals(2, follower.consensusModule().context().electionCounter().get());
+-            assertEquals(leadershipTermId2, follower.consensusModule().context().leadershipTermIdCounter().get());
++            assertEquals(2, follower.consensusModuleContext().electionCounter().get());
++            assertEquals(leadershipTermId2, follower.consensusModuleContext().leadershipTermIdCounter().get());
+         }
+     }
+ 
+@@ -356,11 +356,11 @@
+         cluster.stopAllNodes();
+         cluster.restartAllNodes(false);
+         final TestNode leader2 = cluster.awaitLeader();
+-        final long leadershipTermId = leader2.consensusModule().context().leadershipTermIdCounter().get();
++        final long leadershipTermId = leader2.consensusModuleContext().leadershipTermIdCounter().get();
+         assertEquals(2, cluster.followers().size());
+         for (final TestNode follower : cluster.followers())
+         {
+-            assertEquals(leadershipTermId, follower.consensusModule().context().leadershipTermIdCounter().get());
++            assertEquals(leadershipTermId, follower.consensusModuleContext().leadershipTermIdCounter().get());
+         }
+ 
+         cluster.awaitSnapshotsLoaded();
+@@ -1075,8 +1075,8 @@
+         cluster.sendAndAwaitMessages(1);
+ 
+         final long timeoutMs = NANOSECONDS.toMillis(Math.max(
+-            leader.consensusModule().context().sessionTimeoutNs(),
+-            leader.consensusModule().context().leaderHeartbeatTimeoutNs()));
++            leader.consensusModuleContext().sessionTimeoutNs(),
++            leader.consensusModuleContext().leaderHeartbeatTimeoutNs()));
+         clusterClock.addOffset(timeoutMs + 1);
+ 
+         cluster.shouldErrorOnClientClose(false);
+@@ -1101,7 +1101,7 @@
+         final TestNode leader = cluster.awaitLeader();
+ 
+         final AeronCluster client = cluster.connectClient();
+-        final ConsensusModule.Context context = leader.consensusModule().context();
++        final ConsensusModule.Context context = leader.consensusModuleContext();
+         final Counter timedOutClientCounter = context.timedOutClientCounter();
+ 
+         assertEquals(0, timedOutClientCounter.get());
+@@ -2017,7 +2017,7 @@
+         }
+ 
+         long time = System.nanoTime();
+-        final long deadline = time + leader.consensusModule().context().leaderHeartbeatTimeoutNs();
++        final long deadline = time + leader.consensusModuleContext().leaderHeartbeatTimeoutNs();
+         do
+         {
+             assertEquals(0, cluster.getSnapshotCount(leader));
+@@ -2142,7 +2142,7 @@
+ 
+         final TestNode leader = cluster.awaitLeader();
+ 
+-        final SnapshotDurationTracker totalSnapshotDurationTracker = leader.consensusModule().context()
++        final SnapshotDurationTracker totalSnapshotDurationTracker = leader.consensusModuleContext()
+             .totalSnapshotDurationTracker();
+ 
+         final SnapshotDurationTracker service1SnapshotDurationTracker = leader.container(0).context()
+@@ -2198,7 +2198,7 @@
+ 
+         for (final TestNode follower : cluster.followers())
+         {
+-            final SnapshotDurationTracker snapshotDurationTracker = follower.consensusModule().context()
++            final SnapshotDurationTracker snapshotDurationTracker = follower.consensusModuleContext()
+                 .totalSnapshotDurationTracker();
+             assertEquals(1, snapshotDurationTracker.snapshotDurationThresholdExceededCount().get());
+             assertThat(
+@@ -2331,7 +2331,7 @@
+         leader.container().close(); // Will cause shutdown in consensus module
+         Tests.sleep(1_000);
+ 
+-        CloseHelper.quietCloseAll(leader.consensusModule(), leader.archive(), leader.mediaDriver());
++        CloseHelper.quietCloseAll(leader::closeConsensusModule, leader.archive(), leader.mediaDriver());
+ 
+         cluster.startStaticNode(0, false);
+         cluster.awaitLeader();
+@@ -2463,7 +2463,7 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         final TestNode leader = cluster.awaitLeader();
+-        final int logStreamId = leader.consensusModule().context().logStreamId();
++        final int logStreamId = leader.consensusModuleContext().logStreamId();
+         final AeronCluster client = cluster.connectClient();
+         final int logOffset = 288; // NewLeadershipTermEvent + SessionOpenEvent
+ 
+@@ -2547,13 +2547,13 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         TestNode leader = cluster.awaitLeader();
+-        final long leaderHeartbeatTimeoutNs = leader.consensusModule().context().leaderHeartbeatTimeoutNs();
+-        final int leaderId = leader.consensusModule().context().clusterMemberId();
+-        assertEquals(1, leader.consensusModule().context().electionCounter().get());
++        final long leaderHeartbeatTimeoutNs = leader.consensusModuleContext().leaderHeartbeatTimeoutNs();
++        final int leaderId = leader.consensusModuleContext().clusterMemberId();
++        assertEquals(1, leader.consensusModuleContext().electionCounter().get());
+         final List<TestNode> followers = cluster.followers();
+         for (final TestNode follower : followers)
+         {
+-            assertEquals(1, follower.consensusModule().context().electionCounter().get());
++            assertEquals(1, follower.consensusModuleContext().electionCounter().get());
+         }
+ 
+         cluster.connectClient();
+@@ -2609,15 +2609,15 @@
+         cluster.awaitServicesMessageCount(messageCount);
+         assertThat(
+             "unexpected election on leader",
+-            leader.consensusModule().context().electionCounter().get(),
++            leader.consensusModuleContext().electionCounter().get(),
+             equalTo(1L /* startup */));
+         assertThat(
+             "unexpected election on follower 1",
+-            follower1.consensusModule().context().electionCounter().get(),
++            follower1.consensusModuleContext().electionCounter().get(),
+             equalTo(1L /* startup */));
+         assertThat(
+             "election loop detected",
+-            follower2.consensusModule().context().electionCounter().get(),
++            follower2.consensusModuleContext().electionCounter().get(),
+             equalTo(1L /* node restarted */));
+     }
+ 
+@@ -2629,7 +2629,7 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         final TestNode leader = cluster.awaitLeader();
+-        final ConsensusModule.Context leaderContext = leader.consensusModule().context();
++        final ConsensusModule.Context leaderContext = leader.consensusModuleContext();
+         try (Aeron aeron = Aeron.connect(new Aeron.Context()
+             .aeronDirectoryName(leaderContext.aeronDirectoryName())))
+         {
+@@ -3203,7 +3203,7 @@
+ 
+         final TestMediaDriver clientDriver = cluster.startClientMediaDriver();
+ 
+-        final ConsensusModule.Context leaderConsensusModule = leader.consensusModule().context();
++        final ConsensusModule.Context leaderConsensusModule = leader.consensusModuleContext();
+         final AtomicInteger availableImageCount = new AtomicInteger();
+         final AtomicInteger unAvailableImageCount = new AtomicInteger();
+         final ChannelUri ingressChannel = ChannelUri.parse(leaderConsensusModule.ingressChannel());
+@@ -3244,7 +3244,7 @@
+         systemTestWatcher.cluster(cluster);
+ 
+         final TestNode leader = cluster.awaitLeader();
+-        final ConsensusModule.Context leaderContext = leader.consensusModule().context();
++        final ConsensusModule.Context leaderContext = leader.consensusModuleContext();
+         final CountersReader leaderCounters = leaderContext.aeron().countersReader();
+ 
+         final TestMediaDriver clientDriver = cluster.startClientMediaDriver();
+@@ -3305,16 +3305,16 @@
+ 
+         cluster.takeSnapshot(leader);
+ 
+-        Tests.awaitValue(leader.consensusModule().context().errorCounter(), 1);
++        Tests.awaitValue(leader.consensusModuleContext().errorCounter(), 1);
+         Tests.await(() -> ConsensusModule.State.ACTIVE == leader.moduleState());
+         Tests.awaitValue(cluster.getClusterControlToggle(leader), ClusterControl.ToggleState.NEUTRAL.code());
+-        assertEquals(0, leader.consensusModule().context().snapshotCounter().get());
++        assertEquals(0, leader.consensusModuleContext().snapshotCounter().get());
+ 
+         for (final TestNode follower : cluster.followers())
+         {
+-            Tests.awaitValue(follower.consensusModule().context().errorCounter(), 1);
++            Tests.awaitValue(follower.consensusModuleContext().errorCounter(), 1);
+             Tests.await(() -> ConsensusModule.State.ACTIVE == follower.moduleState());
+-            assertEquals(0, follower.consensusModule().context().snapshotCounter().get());
++            assertEquals(0, follower.consensusModuleContext().snapshotCounter().get());
+         }
+     }
+ 
+@@ -3352,8 +3352,8 @@
+         for (int i = 0; i < cluster.memberCount(); i++)
+         {
+             final TestNode node = cluster.node(i);
+-            Tests.awaitValue(node.consensusModule().context().errorCounter(), 1);
+-            assertEquals(0, node.consensusModule().context().snapshotCounter().get());
++            Tests.awaitValue(node.consensusModuleContext().errorCounter(), 1);
++            assertEquals(0, node.consensusModuleContext().snapshotCounter().get());
+         }
+ 
+         cluster.stopAllNodes();
+@@ -3394,8 +3394,8 @@
+         for (int i = 0; i < cluster.memberCount(); i++)
+         {
+             final TestNode node = cluster.node(i);
+-            Tests.awaitValue(node.consensusModule().context().errorCounter(), 1);
+-            assertEquals(0, node.consensusModule().context().snapshotCounter().get());
++            Tests.awaitValue(node.consensusModuleContext().errorCounter(), 1);
++            assertEquals(0, node.consensusModuleContext().snapshotCounter().get());
+         }
+ 
+         cluster.stopAllNodes();
+@@ -3427,7 +3427,7 @@
+         TestNode fastFollower = followers.get(0);
+         final TestNode slowFollower = followers.get(1);
+         final ClusterMember[] clusterMembers =
+-            ClusterMember.parse(leader.consensusModule().context().clusterMembers());
++            ClusterMember.parse(leader.consensusModuleContext().clusterMembers());
+ 
+         cluster.connectClient();
+ 
+@@ -3435,7 +3435,7 @@
+         final long slowFollowerAppendPosition = slowFollower.appendPosition();
+ 
+         final StreamIdLossGenerator slowFollowerLossGenerator = lossGenerators.get(slowFollower.memberId());
+-        slowFollowerLossGenerator.enable(slowFollower.consensusModule().context().logStreamId());
++        slowFollowerLossGenerator.enable(slowFollower.consensusModuleContext().logStreamId());
+ 
+         sentMessages += cluster.sendMessages(200);
+         cluster.awaitResponseMessageCount(sentMessages);
+@@ -3452,7 +3452,7 @@
+         final long leaderAppendPosition = awaitLeaderLogRecording(cluster, leader, sentMessages);
+         assertEquals(quorumPosition, leader.commitPosition(), "commit-pos cannot go backwards");
+ 
+-        final AtomicBuffer errorBuffer = leader.consensusModule().context().errorLog().buffer();
++        final AtomicBuffer errorBuffer = leader.consensusModuleContext().errorLog().buffer();
+         final String expectedError = "quorum position went backwards: leaderCommitPosition=" + quorumPosition +
+             " quorumPosition=" + slowFollowerAppendPosition;
+         final MutableBoolean found = new MutableBoolean(false);
+@@ -3526,7 +3526,7 @@
+         for (int i = 0; i < clusterSize; i++)
+         {
+             final StreamIdLossGenerator lossGenerator = lossGenerators.get(i);
+-            lossGenerator.enable(cluster.node(i).consensusModule().context().consensusStreamId());
++            lossGenerator.enable(cluster.node(i).consensusModuleContext().consensusStreamId());
+         }
+ 
+         // wait for the next round of elections to start on all nodes
+@@ -3595,7 +3595,7 @@
+         cluster.waitForError(follower, (s) -> s.contains("failed to start service=0"));
+ 
+         cluster.stopNode(follower);
+-        final File followerClusterDir = follower.consensusModule().context().clusterDir();
++        final File followerClusterDir = follower.consensusModuleContext().clusterDir();
+         assertTrue(ClusterTool.invalidateLatestSnapshot(mock(PrintStream.class), followerClusterDir));
+ 
+         cluster.startStaticNode(follower.index(), false);
+@@ -3715,7 +3715,7 @@
+     static long readSnapshot(final TestNode node)
+     {
+         final long recordingId;
+-        try (RecordingLog recordingLog = new RecordingLog(node.consensusModule().context().clusterDir(),
++        try (RecordingLog recordingLog = new RecordingLog(node.consensusModuleContext().clusterDir(),
+             false))
+         {
+             final RecordingLog.Entry snapshot = recordingLog.getLatestSnapshot(
+diff -ruN orig/aeron-system-tests/src/test/java/io/aeron/cluster/RustClientTest.java new/aeron-system-tests/src/test/java/io/aeron/cluster/RustClientTest.java
+--- orig/aeron-system-tests/src/test/java/io/aeron/cluster/RustClientTest.java	1970-01-01 01:00:00
++++ new/aeron-system-tests/src/test/java/io/aeron/cluster/RustClientTest.java	2026-10-31 18:08:40
+@@ -0,0 +1,749 @@
++/*
++ * Copyright 2026 the rusteron-cluster authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * https://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package io.aeron.cluster;
++
++import io.aeron.ChannelUri;
++import io.aeron.cluster.client.AeronCluster;
++import io.aeron.cluster.client.EgressListener;
++import io.aeron.cluster.codecs.AdminRequestType;
++import io.aeron.cluster.codecs.AdminResponseCode;
++import io.aeron.cluster.codecs.EventCode;
++import io.aeron.driver.ext.DebugReceiveChannelEndpoint;
++import io.aeron.driver.ext.DebugSendChannelEndpoint;
++import io.aeron.logbuffer.Header;
++import io.aeron.security.AuthenticationException;
++import io.aeron.security.Authenticator;
++import io.aeron.security.SessionProxy;
++import io.aeron.test.EventLogExtension;
++import io.aeron.test.InterruptAfter;
++import io.aeron.test.InterruptingTestCallback;
++import io.aeron.test.SlowTest;
++import io.aeron.test.SystemTestWatcher;
++import io.aeron.test.Tests;
++import io.aeron.test.cluster.RustClient;
++import io.aeron.test.cluster.TestCluster;
++import io.aeron.test.cluster.TestNode;
++import io.aeron.test.driver.PortLossGenerator;
++import io.aeron.test.driver.StreamIdLossGenerator;
++import io.aeron.test.driver.TestMediaDriver;
++import org.agrona.CloseHelper;
++import org.agrona.DirectBuffer;
++import org.agrona.concurrent.UnsafeBuffer;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.junit.jupiter.api.extension.RegisterExtension;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.CsvSource;
++import org.junit.jupiter.params.provider.ValueSource;
++
++import java.nio.charset.StandardCharsets;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicLong;
++
++import static io.aeron.CommonContext.ENDPOINT_PARAM_NAME;
++import static io.aeron.test.cluster.TestCluster.aCluster;
++import static io.aeron.test.cluster.TestCluster.ingressEndpoint;
++import static org.agrona.BitUtil.SIZE_OF_LONG;
++import static org.junit.jupiter.api.Assertions.assertArrayEquals;
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertNotEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++import static org.junit.jupiter.api.Assumptions.assumeTrue;
++
++/**
++ * Aeron's client cases, from {@code ClusterTest}, {@code AuthenticationTest} and
++ * {@code ClusterSessionReliabilityTest}, with rusteron's client ({@link RustClient}) in place of Java's
++ * {@code AeronCluster}: on Java's consensus modules, and on rusteron's when {@code AERON_TEST_RUST_CM} names one.
++ * The cluster's services echo what a client sends.
++ */
++@SlowTest
++@ExtendWith({ EventLogExtension.class, InterruptingTestCallback.class })
++class RustClientTest
++{
++    @RegisterExtension
++    final SystemTestWatcher systemTestWatcher = new SystemTestWatcher();
++
++    private TestCluster cluster;
++    private final List<RustClient> clients = new ArrayList<>();
++
++    @AfterEach
++    void after()
++    {
++        clients.forEach(CloseHelper::close);
++    }
++
++    /**
++     * What a client heard.
++     */
++    static final class Heard implements EgressListener
++    {
++        final List<byte[]> messages = new ArrayList<>();
++        final List<Long> sessions = new ArrayList<>();
++        final List<EventCode> events = new ArrayList<>();
++        final List<Integer> newLeaders = new ArrayList<>();
++        final List<String> adminResponses = new ArrayList<>();
++
++        public void onMessage(
++            final long clusterSessionId,
++            final long timestamp,
++            final DirectBuffer buffer,
++            final int offset,
++            final int length,
++            final Header header)
++        {
++            final byte[] bytes = new byte[length];
++            buffer.getBytes(offset, bytes);
++            messages.add(bytes);
++            sessions.add(clusterSessionId);
++        }
++
++        public void onSessionEvent(
++            final long correlationId,
++            final long clusterSessionId,
++            final long leadershipTermId,
++            final int leaderMemberId,
++            final EventCode code,
++            final String detail)
++        {
++            events.add(code);
++        }
++
++        public void onNewLeader(
++            final long clusterSessionId,
++            final long leadershipTermId,
++            final int leaderMemberId,
++            final String ingressEndpoints)
++        {
++            newLeaders.add(leaderMemberId);
++        }
++
++        public void onAdminResponse(
++            final long clusterSessionId,
++            final long correlationId,
++            final AdminRequestType requestType,
++            final AdminResponseCode responseCode,
++            final String message,
++            final DirectBuffer payload,
++            final int payloadOffset,
++            final int payloadLength)
++        {
++            adminResponses.add(correlationId + " " + requestType + " " + responseCode + " " + message);
++        }
++    }
++
++    private static boolean onJavaModules()
++    {
++        final String rustModule = System.getenv("AERON_TEST_RUST_CM");
++        return null == rustModule || rustModule.isEmpty();
++    }
++
++    private RustClient.Context clientCtx()
++    {
++        final TestMediaDriver driver = cluster.startClientMediaDriver();
++        final AeronCluster.Context java = cluster.clientCtx();
++        return new RustClient.Context()
++            .aeronDirectoryName(driver.aeronDirectoryName())
++            .ingressChannel(java.ingressChannel())
++            .ingressEndpoints(java.ingressEndpoints())
++            .egressChannel(java.egressChannel());
++    }
++
++    private RustClient connect(final RustClient.Context ctx)
++    {
++        final RustClient client = RustClient.connect(ctx);
++        clients.add(client);
++        return client;
++    }
++
++    private static byte[] message(final int value)
++    {
++        return ("message " + value).getBytes(StandardCharsets.US_ASCII);
++    }
++
++    private static void send(final RustClient client, final Heard heard, final byte[] message)
++    {
++        final UnsafeBuffer buffer = new UnsafeBuffer(message);
++        while (client.offer(buffer, 0, message.length) < 0)
++        {
++            client.pollEgress(heard);
++            Tests.yield();
++        }
++    }
++
++    private static void awaitEchoes(final RustClient client, final Heard heard, final int count)
++    {
++        while (heard.messages.size() < count)
++        {
++            if (0 == client.pollEgress(heard))
++            {
++                Tests.yield();
++            }
++        }
++    }
++
++    private static void sendAndAwaitEchoes(final RustClient client, final Heard heard, final int from, final int to)
++    {
++        final int before = heard.messages.size();
++        for (int i = from; i < to; i++)
++        {
++            send(client, heard, message(i));
++        }
++        awaitEchoes(client, heard, before + to - from);
++        for (int i = from; i < to; i++)
++        {
++            assertArrayEquals(message(i), heard.messages.get(before + i - from));
++        }
++    }
++
++    /**
++     * {@code TestCluster.awaitServiceMessageCount} without its keepalives, which are sent by Java's client.
++     */
++    private static void awaitServiceMessageCount(final TestNode node, final int count)
++    {
++        while (node.service().messageCount() < count)
++        {
++            Tests.yield();
++        }
++    }
++
++    private static String endpointOf(final String channel)
++    {
++        return ChannelUri.parse(channel).get(ENDPOINT_PARAM_NAME);
++    }
++
++    private static int endpointPort(final String channel)
++    {
++        final String endpoint = endpointOf(channel);
++        return Integer.parseInt(endpoint.substring(endpoint.indexOf(':') + 1));
++    }
++
++    @Test
++    @InterruptAfter(30)
++    void shouldConnectEchoAndClose()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        final TestNode leader = cluster.awaitLeader();
++
++        final RustClient client = connect(clientCtx());
++        assertEquals(leader.index(), client.leaderMemberId());
++        cluster.awaitActiveSessionCount(1);
++        final Heard heard = new Heard();
++        sendAndAwaitEchoes(client, heard, 0, 10);
++        assertTrue(heard.sessions.stream().allMatch(s -> s == client.clusterSessionId()));
++
++        client.close();
++        cluster.awaitActiveSessionCount(0);
++    }
++
++    @Test
++    @InterruptAfter(30)
++    void shouldBeRedirectedToTheLeaderWithASubsetOfMembersConfigured()
++    {
++        cluster = aCluster().withStaticNodes(3).withClusterId(4).start();
++        systemTestWatcher.cluster(cluster);
++        final TestNode leader = cluster.awaitLeader();
++        final StringBuilder followers = new StringBuilder();
++        for (final TestNode node : cluster.followers())
++        {
++            followers.append(node.memberId()).append('=')
++                .append(ingressEndpoint(cluster.clusterId(), node.memberId(), cluster.memberCount())).append(',');
++        }
++        followers.setLength(followers.length() - 1);
++
++        final RustClient client = connect(clientCtx()
++            .ingressChannel("aeron:udp?alias=ingress")
++            .ingressEndpoints(followers.toString())
++            .egressChannel("aeron:udp?endpoint=localhost:0|alias=redirect-test"));
++        assertEquals(
++            ingressEndpoint(cluster.clusterId(), leader.memberId(), cluster.memberCount()),
++            endpointOf(client.ingressChannel()));
++        sendAndAwaitEchoes(client, new Heard(), 0, 3);
++    }
++
++    @ParameterizedTest
++    @ValueSource(strings = { "valid", "invalid", "wrong port" })
++    @InterruptAfter(30)
++    void shouldReachTheLeaderWhateverItsConfiguredEndpoint(final String mode)
++    {
++        cluster = aCluster().withStaticNodes(3).withClusterId(2).withAppointedLeader(2).start();
++        systemTestWatcher.cluster(cluster);
++        systemTestWatcher.ignoreErrorsMatching((error) -> error.contains("endpoint=invalid"));
++        final TestNode leader = cluster.awaitLeader();
++        final String leaderEndpoint = ingressEndpoint(cluster.clusterId(), leader.memberId(), cluster.memberCount());
++        final StringBuilder endpoints = new StringBuilder();
++        for (final TestNode node : cluster.followers())
++        {
++            endpoints.append(node.memberId()).append('=')
++                .append(ingressEndpoint(cluster.clusterId(), node.memberId(), cluster.memberCount())).append(',');
++        }
++        endpoints.append(leader.memberId()).append('=');
++        final int colon = leaderEndpoint.indexOf(':');
++        switch (mode)
++        {
++            case "valid" -> endpoints.append(leaderEndpoint);
++            case "invalid" -> endpoints.append("invalid").append(leaderEndpoint, colon, leaderEndpoint.length());
++            default -> endpoints.append(leaderEndpoint, 0, colon + 1)
++                .append(Integer.parseInt(leaderEndpoint.substring(colon + 1)) + 1111);
++        }
++
++        final RustClient client = connect(clientCtx().ingressEndpoints(endpoints.toString()));
++        assertEquals(leaderEndpoint, endpointOf(client.ingressChannel()));
++        sendAndAwaitEchoes(client, new Heard(), 0, 3);
++    }
++
++    @Test
++    @InterruptAfter(40)
++    void shouldFollowANewLeaderAndCarryOnEchoing()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        final TestNode originalLeader = cluster.awaitLeader();
++        final RustClient client = connect(clientCtx());
++        final Heard heard = new Heard();
++        sendAndAwaitEchoes(client, heard, 0, 10);
++        assertEquals(originalLeader.index(), client.leaderMemberId());
++
++        cluster.stopNode(originalLeader);
++        final TestNode newLeader = cluster.awaitLeader(originalLeader.index());
++        while (heard.newLeaders.isEmpty())
++        {
++            client.pollEgress(heard);
++            Tests.sleep(1);
++        }
++        assertEquals(List.of(newLeader.index()), heard.newLeaders);
++        assertEquals(newLeader.index(), client.leaderMemberId());
++
++        sendAndAwaitEchoes(client, heard, 10, 17);
++        awaitServiceMessageCount(newLeader, 17);
++        awaitServiceMessageCount(cluster.followers().get(0), 17);
++    }
++
++    @Test
++    @InterruptAfter(40)
++    void shouldBeClosedByTheClusterOnSessionTimeout()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient client = connect(clientCtx());
++        final Heard heard = new Heard();
++        while (!client.isClosed())
++        {
++            client.pollEgress(heard);
++            Tests.sleep(10);
++        }
++        assertEquals(List.of(EventCode.CLOSED), heard.events);
++    }
++
++    @Test
++    @InterruptAfter(40)
++    void shouldBeKeptOpenByKeepAlives()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient client = connect(clientCtx());
++        final Heard heard = new Heard();
++        // Past the cluster's session timeout, 10 s by default.
++        final long deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(12);
++        while (System.nanoTime() < deadlineNs)
++        {
++            assertTrue(client.sendKeepAlive());
++            client.pollEgress(heard);
++            Tests.sleep(500);
++        }
++        assertFalse(client.isClosed());
++        assertTrue(heard.events.isEmpty(), heard.events::toString);
++        sendAndAwaitEchoes(client, heard, 0, 3);
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldCloseOnceTheClusterIsGone()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient client = connect(clientCtx().newLeaderTimeoutNs(TimeUnit.SECONDS.toNanos(1)));
++        assertFalse(client.isClosed());
++        cluster.terminationsExpected(true);
++        cluster.stopAllNodes();
++        final Heard heard = new Heard();
++        while (!client.isClosed())
++        {
++            Tests.sleep(10);
++            client.sendKeepAlive();
++            client.pollEgress(heard);
++        }
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldHearTheClustersAnswerToAnAdminRequest()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient client = connect(clientCtx());
++        final long correlationId = System.nanoTime();
++        while (!client.sendAdminRequestToTakeASnapshot(correlationId))
++        {
++            Tests.yield();
++        }
++        final Heard heard = new Heard();
++        while (heard.adminResponses.isEmpty())
++        {
++            client.pollEgress(heard);
++            Tests.yield();
++        }
++        assertEquals(
++            List.of(correlationId + " SNAPSHOT UNAUTHORISED_ACCESS " +
++                "Execution of the SNAPSHOT request was not authorised"),
++            heard.adminResponses);
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldEchoAMessageFragmentedBothWays()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient client = connect(clientCtx());
++        // Over the MTU, under the 16 KB a message may take in the ingress's and egress's 128k terms.
++        final byte[] large = new byte[8 * 1024];
++        Arrays.fill(large, (byte)'x');
++        large[0] = 'L';
++        final Heard heard = new Heard();
++        send(client, heard, large);
++        awaitEchoes(client, heard, 1);
++        assertArrayEquals(large, heard.messages.get(0));
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldRefuseAMessageTooLongAndCarryOn()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient client = connect(clientCtx());
++        // Its session header takes it past the 16 KB: Aeron C's publication error, where Java's client throws.
++        final byte[] tooLong = new byte[16 * 1024];
++        assertEquals(RustClient.PUBLICATION_ERROR, client.offer(new UnsafeBuffer(tooLong), 0, tooLong.length));
++        final Heard heard = new Heard();
++        client.pollEgress(heard);
++        assertEquals("Connected", client.state());
++        sendAndAwaitEchoes(client, heard, 0, 3);
++    }
++
++    @Test
++    @InterruptAfter(30)
++    void shouldHearOnlyItsOwnSession()
++    {
++        cluster = aCluster().withStaticNodes(3).start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++        final RustClient first = connect(clientCtx());
++        final RustClient second = connect(clientCtx());
++        assertNotEquals(first.clusterSessionId(), second.clusterSessionId());
++        final Heard heardFirst = new Heard();
++        final Heard heardSecond = new Heard();
++        sendAndAwaitEchoes(first, heardFirst, 0, 5);
++        sendAndAwaitEchoes(second, heardSecond, 100, 105);
++        first.pollEgress(heardFirst);
++        assertEquals(5, heardFirst.messages.size());
++        assertTrue(heardFirst.sessions.stream().allMatch(s -> s == first.clusterSessionId()));
++        assertTrue(heardSecond.sessions.stream().allMatch(s -> s == second.clusterSessionId()));
++    }
++
++    @ParameterizedTest
++    @CsvSource({ "false, false", "true, false", "false, true", "true, true" })
++    @InterruptAfter(20)
++    void shouldBeClosedWhenItsIngressImageGoesUnavailable(final boolean multicastIngress, final boolean withFailover)
++    {
++        TestMediaDriver.notSupportedOnCMediaDriver("uses custom channel endpoint suppliers for simulating loss");
++
++        final AtomicLong outOfSequenceCount = new AtomicLong();
++        String ingressChannel = "aeron:udp?term-length=128k|alias=ingress";
++        if (multicastIngress)
++        {
++            ingressChannel += "|endpoint=239.192.11.87:20123|interface=127.0.0.1";
++        }
++        final long imageLivenessTimeoutNs = TimeUnit.MILLISECONDS.toNanos(1000);
++        final long sessionTimeoutNs = TimeUnit.MILLISECONDS.toNanos(4000);
++        cluster = aCluster()
++            .withStaticNodes(3)
++            .withServiceSupplier((index) -> new TestNode.TestService[]
++            {
++                new ClusterSessionReliabilityTest.SequenceCheckingService(index, outOfSequenceCount)
++            })
++            .withIngressChannel(ingressChannel)
++            .withImageLivenessTimeoutNs(imageLivenessTimeoutNs)
++            .withSessionTimeoutNs(sessionTimeoutNs)
++            .start();
++        systemTestWatcher.cluster(cluster);
++        TestNode leader = cluster.awaitLeader();
++
++        final PortLossGenerator clientSendLossGenerator = new PortLossGenerator();
++        cluster.clientSendChannelEndpointSupplier((udpChannel, statusIndicator, context) ->
++            new DebugSendChannelEndpoint(
++                udpChannel, statusIndicator, context, clientSendLossGenerator, clientSendLossGenerator));
++        final RustClient client = connect(clientCtx());
++        final Heard heard = new Heard();
++
++        if (withFailover)
++        {
++            final int previousLeaderIndex = leader.index();
++            leader.gracefulClose();
++            leader = cluster.awaitLeader(previousLeaderIndex);
++            while (heard.newLeaders.isEmpty())
++            {
++                client.pollEgress(heard);
++                Tests.sleep(1);
++            }
++            while (!client.sendKeepAlive())
++            {
++                client.pollEgress(heard);
++                Tests.yield();
++            }
++        }
++
++        final TestNode.TestService leaderService = leader.service();
++        final UnsafeBuffer buffer = new UnsafeBuffer(new byte[SIZE_OF_LONG]);
++        long sequence = 0;
++        boolean lossRequested = false;
++        long now = System.nanoTime();
++        long nextMessageAt = now;
++        final long deadline = now + 2 * sessionTimeoutNs;
++        while (true)
++        {
++            now = System.nanoTime();
++            if (now - deadline >= 0)
++            {
++                break;
++            }
++
++            if (now - nextMessageAt >= 0)
++            {
++                buffer.putLong(0, sequence);
++                if (client.offer(buffer, 0, buffer.capacity()) > 0)
++                {
++                    sequence++;
++                    nextMessageAt += TimeUnit.MILLISECONDS.toNanos(10);
++                }
++            }
++
++            client.pollEgress(heard);
++            if (client.isClosed())
++            {
++                break;
++            }
++
++            if (!lossRequested && leaderService.messageCount() >= 5)
++            {
++                clientSendLossGenerator.startDropping(
++                    endpointPort(client.ingressChannel()),
++                    imageLivenessTimeoutNs + TimeUnit.MILLISECONDS.toNanos(200));
++                lossRequested = true;
++            }
++
++            Tests.sleep(1);
++        }
++
++        assertTrue(lossRequested);
++        assertEquals(0, outOfSequenceCount.get());
++        assertTrue(client.isClosed());
++    }
++
++    @Test
++    @InterruptAfter(10)
++    void shouldNotRejoinItsEgressImageAfterLoss()
++    {
++        TestMediaDriver.notSupportedOnCMediaDriver("uses custom channel endpoint suppliers for simulating loss");
++
++        cluster = aCluster()
++            .withStaticNodes(1)
++            .withServiceSupplier((index) -> new TestNode.TestService[]
++            {
++                new ClusterSessionReliabilityTest.SequencedEgressService(index)
++            })
++            .start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++
++        final StreamIdLossGenerator clientReceiveLossGenerator = new StreamIdLossGenerator();
++        cluster.clientReceiveChannelEndpointSupplier((udpChannel, dispatcher, statusIndicator, context) ->
++            new DebugReceiveChannelEndpoint(
++                udpChannel,
++                dispatcher,
++                statusIndicator,
++                context,
++                clientReceiveLossGenerator,
++                clientReceiveLossGenerator));
++        final long imageLivenessTimeoutNs = TimeUnit.MILLISECONDS.toNanos(1000);
++        cluster.clientImageLivenessTimeoutNs(imageLivenessTimeoutNs);
++        final RustClient client = connect(clientCtx());
++
++        final ClusterSessionReliabilityTest.SequenceCheckingEgressListener egressListener =
++            new ClusterSessionReliabilityTest.SequenceCheckingEgressListener();
++        boolean lossRequested = false;
++        final long deadline = System.nanoTime() + imageLivenessTimeoutNs + TimeUnit.SECONDS.toNanos(2);
++        while (System.nanoTime() - deadline < 0)
++        {
++            client.pollEgress(egressListener);
++            if (!lossRequested && egressListener.nextSequence >= 5)
++            {
++                lossRequested = true;
++                clientReceiveLossGenerator.enable(cluster.clientCtx().egressStreamId());
++            }
++
++            Tests.sleep(1);
++        }
++
++        clientReceiveLossGenerator.disable();
++        assertTrue(lossRequested);
++        assertEquals(0, egressListener.outOfSequenceCount);
++    }
++
++    /**
++     * An authenticator as {@code AuthenticationTest}'s: it takes {@code credentials}, or, with a
++     * {@code challenge}, takes them in answer to it; or rejects.
++     */
++    static final class TestAuthenticator implements Authenticator
++    {
++        private final byte[] credentials;
++        private final byte[] challenge;
++        private final boolean reject;
++        private final java.util.Map<Long, Boolean> answered = new java.util.HashMap<>();
++        private final java.util.Map<Long, Boolean> valid = new java.util.HashMap<>();
++
++        TestAuthenticator(final byte[] credentials, final byte[] challenge, final boolean reject)
++        {
++            this.credentials = credentials;
++            this.challenge = challenge;
++            this.reject = reject;
++        }
++
++        public void onConnectRequest(final long sessionId, final byte[] encodedCredentials, final long nowMs)
++        {
++            valid.put(sessionId, Arrays.equals(credentials, encodedCredentials));
++        }
++
++        public void onChallengeResponse(final long sessionId, final byte[] encodedCredentials, final long nowMs)
++        {
++            answered.put(sessionId, true);
++            valid.put(sessionId, Arrays.equals(credentials, encodedCredentials));
++        }
++
++        public void onConnectedSession(final SessionProxy sessionProxy, final long nowMs)
++        {
++            if (null != challenge)
++            {
++                sessionProxy.challenge(challenge);
++            }
++            else if (reject || !valid.getOrDefault(sessionProxy.sessionId(), false))
++            {
++                sessionProxy.reject();
++            }
++            else
++            {
++                sessionProxy.authenticate("principal".getBytes(StandardCharsets.US_ASCII));
++            }
++        }
++
++        public void onChallengedSession(final SessionProxy sessionProxy, final long nowMs)
++        {
++            if (answered.getOrDefault(sessionProxy.sessionId(), false))
++            {
++                if (reject || !valid.getOrDefault(sessionProxy.sessionId(), false))
++                {
++                    sessionProxy.reject();
++                }
++                else
++                {
++                    sessionProxy.authenticate("principal".getBytes(StandardCharsets.US_ASCII));
++                }
++            }
++        }
++    }
++
++    private static final byte[] CREDENTIALS =
++        "username=\"admin\"|password=\"secret\"".getBytes(StandardCharsets.US_ASCII);
++    private static final byte[] CHALLENGE = "I challenge you!".getBytes(StandardCharsets.US_ASCII);
++
++    private void startAuthenticatingCluster(final byte[] challenge, final boolean reject)
++    {
++        assumeTrue(onJavaModules(), "rusteron's module has no authenticator but the default");
++        cluster = aCluster().withStaticNodes(3)
++            .withAuthenticationSupplier(() -> new TestAuthenticator(CREDENTIALS, challenge, reject))
++            .start();
++        systemTestWatcher.cluster(cluster);
++        cluster.awaitLeader();
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldAuthenticateOnConnectRequestWithCredentials()
++    {
++        startAuthenticatingCluster(null, false);
++        final RustClient client = connect(clientCtx().credentials(CREDENTIALS, null));
++        sendAndAwaitEchoes(client, new Heard(), 0, 1);
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldAuthenticateOnChallengeResponse()
++    {
++        startAuthenticatingCluster(CHALLENGE, false);
++        final RustClient client = connect(clientCtx().credentials(new byte[0], CREDENTIALS));
++        sendAndAwaitEchoes(client, new Heard(), 0, 1);
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldRejectOnConnectRequest()
++    {
++        startAuthenticatingCluster(null, true);
++        assertThrows(AuthenticationException.class, () -> connect(clientCtx().credentials(CREDENTIALS, null)));
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldRejectOnChallengeResponse()
++    {
++        startAuthenticatingCluster(CHALLENGE, true);
++        assertThrows(
++            AuthenticationException.class, () -> connect(clientCtx().credentials(new byte[0], CREDENTIALS)));
++    }
++
++    @Test
++    @InterruptAfter(20)
++    void shouldRejectWrongCredentials()
++    {
++        startAuthenticatingCluster(null, false);
++        assertThrows(
++            AuthenticationException.class,
++            () -> connect(clientCtx().credentials("wrong".getBytes(StandardCharsets.US_ASCII), null)));
++    }
++}
+diff -ruN orig/aeron-system-tests/src/test/java/io/aeron/cluster/StandbySnapshotNoticeTest.java new/aeron-system-tests/src/test/java/io/aeron/cluster/StandbySnapshotNoticeTest.java
+--- orig/aeron-system-tests/src/test/java/io/aeron/cluster/StandbySnapshotNoticeTest.java	1970-01-01 01:00:00
++++ new/aeron-system-tests/src/test/java/io/aeron/cluster/StandbySnapshotNoticeTest.java	2026-10-30 18:13:38
+@@ -0,0 +1,165 @@
++/*
++ * Copyright 2026 the rusteron-cluster authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * https://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package io.aeron.cluster;
++
++import io.aeron.Aeron;
++import io.aeron.Publication;
++import io.aeron.Subscription;
++import io.aeron.cluster.client.AeronCluster;
++import io.aeron.cluster.codecs.MessageHeaderEncoder;
++import io.aeron.cluster.codecs.StandbySnapshotEncoder;
++import io.aeron.test.EventLogExtension;
++import io.aeron.test.InterruptAfter;
++import io.aeron.test.InterruptingTestCallback;
++import io.aeron.test.SlowTest;
++import io.aeron.test.SystemTestWatcher;
++import io.aeron.test.Tests;
++import io.aeron.test.cluster.TestCluster;
++import io.aeron.test.cluster.TestNode;
++import org.agrona.ExpandableArrayBuffer;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.junit.jupiter.api.extension.RegisterExtension;
++
++import java.util.List;
++
++import static io.aeron.test.cluster.TestCluster.aCluster;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertNotNull;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++/**
++ * A member restarting from a standby's snapshot: a follower that missed the cluster's snapshot is told of one, as
++ * a standby tells the members of its own, its recordings in the leader's archive; at its next start it copies them
++ * into its own archive and loads them. Open-source Aeron sends no such notice itself: the test sends it as a
++ * standby would. It runs on Java's consensus modules and on rusteron's alike.
++ */
++@SlowTest
++@ExtendWith({ EventLogExtension.class, InterruptingTestCallback.class })
++class StandbySnapshotNoticeTest
++{
++    private static final int RESPONSE_STREAM_ID = 29877;
++
++    @RegisterExtension
++    final SystemTestWatcher systemTestWatcher = new SystemTestWatcher();
++
++    @Test
++    @InterruptAfter(60)
++    void shouldRestartFromStandbySnapshotCopiedFromAnotherArchive()
++    {
++        final TestCluster cluster = aCluster().withStaticNodes(3).withStandbySnapshots(true).start();
++        systemTestWatcher.cluster(cluster);
++        final TestNode leader = cluster.awaitLeader();
++        final int followerIndex = cluster.followers().get(0).index();
++
++        final AeronCluster client = cluster.connectClient();
++        cluster.sendAndAwaitMessages(10);
++
++        cluster.stopNode(cluster.node(followerIndex));
++        cluster.takeSnapshot(leader);
++        cluster.awaitSnapshotCount(1);
++        cluster.sendAndAwaitMessages(10, 20);
++
++        TestNode follower = cluster.startStaticNode(followerIndex, false);
++        cluster.awaitServiceMessageCount(follower, 20);
++        assertFalse(follower.service().wasSnapshotLoaded(), "the follower missed the snapshot");
++
++        final RecordingLog.Entry module;
++        final RecordingLog.Entry service;
++        try (RecordingLog log = new RecordingLog(leader.consensusModuleContext().clusterDir(), false))
++        {
++            module = log.getLatestSnapshot(ConsensusModule.Configuration.SERVICE_ID);
++            service = log.getLatestSnapshot(0);
++        }
++        assertNotNull(module);
++        assertNotNull(service);
++        final ClusterMember[] members = ClusterMember.parse(leader.consensusModuleContext().clusterMembers());
++        final Aeron aeron = client.context().aeron();
++        try (Subscription responses = aeron.addSubscription("aeron:udp?endpoint=localhost:0", RESPONSE_STREAM_ID);
++            Publication consensus = aeron.addPublication(
++                "aeron:udp?term-length=64k|endpoint=" + members[followerIndex].consensusEndpoint(),
++                ConsensusModule.Configuration.consensusStreamId()))
++        {
++            final String responseChannel = "aeron:udp?endpoint=" + localAddress(responses);
++            final ExpandableArrayBuffer buffer = new ExpandableArrayBuffer(512);
++            final int length = standbySnapshot(
++                buffer,
++                aeron.nextCorrelationId(),
++                responseChannel,
++                members[leader.index()].archiveEndpoint(),
++                List.of(service, module));
++            while (consensus.offer(buffer, 0, length) < 0)
++            {
++                Tests.yield();
++            }
++            cluster.awaitStandbySnapshotCount(follower, 1);
++        }
++
++        cluster.stopNode(follower);
++        follower = cluster.startStaticNode(followerIndex, false);
++        cluster.awaitSnapshotLoadedForService(follower);
++        cluster.awaitServiceMessageCount(follower, 20);
++        assertTrue(follower.service().wasSnapshotLoaded());
++
++        try (RecordingLog log = new RecordingLog(follower.consensusModuleContext().clusterDir(), false))
++        {
++            final RecordingLog.Entry copied = log.getLatestSnapshot(ConsensusModule.Configuration.SERVICE_ID);
++            assertNotNull(copied, "the copy filed as the follower's own snapshot");
++            assertTrue(copied.logPosition == module.logPosition, copied.toString());
++        }
++
++        cluster.sendAndAwaitMessages(10, 30);
++        cluster.awaitServiceMessageCount(follower, 30);
++    }
++
++    private static String localAddress(final Subscription subscription)
++    {
++        while (subscription.localSocketAddresses().isEmpty())
++        {
++            Tests.yield();
++        }
++        return subscription.localSocketAddresses().get(0);
++    }
++
++    private static int standbySnapshot(
++        final ExpandableArrayBuffer buffer,
++        final long correlationId,
++        final String responseChannel,
++        final String archiveEndpoint,
++        final List<RecordingLog.Entry> entries)
++    {
++        final MessageHeaderEncoder header = new MessageHeaderEncoder();
++        final StandbySnapshotEncoder encoder = new StandbySnapshotEncoder()
++            .wrapAndApplyHeader(buffer, 0, header)
++            .correlationId(correlationId)
++            .version(AeronCluster.Configuration.PROTOCOL_SEMANTIC_VERSION)
++            .responseStreamId(RESPONSE_STREAM_ID);
++        final StandbySnapshotEncoder.SnapshotsEncoder snapshots = encoder.snapshotsCount(entries.size());
++        for (final RecordingLog.Entry entry : entries)
++        {
++            snapshots.next()
++                .recordingId(entry.recordingId)
++                .leadershipTermId(entry.leadershipTermId)
++                .termBaseLogPosition(entry.termBaseLogPosition)
++                .logPosition(entry.logPosition)
++                .timestamp(entry.timestamp)
++                .serviceId(entry.serviceId)
++                .archiveEndpoint(archiveEndpoint);
++        }
++        encoder.responseChannel(responseChannel).putEncodedCredentials(new byte[0], 0, 0);
++        return MessageHeaderEncoder.ENCODED_LENGTH + encoder.encodedLength();
++    }
++}
+diff -ruN orig/aeron-test-support/src/main/java/io/aeron/test/cluster/RustBackup.java new/aeron-test-support/src/main/java/io/aeron/test/cluster/RustBackup.java
+--- orig/aeron-test-support/src/main/java/io/aeron/test/cluster/RustBackup.java	1970-01-01 01:00:00
++++ new/aeron-test-support/src/main/java/io/aeron/test/cluster/RustBackup.java	2026-10-31 22:54:25
+@@ -0,0 +1,300 @@
++/*
++ * Copyright 2026 the rusteron-cluster authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * https://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package io.aeron.test.cluster;
++
++import io.aeron.AeronCounters;
++import io.aeron.Counter;
++import io.aeron.cluster.ClusterBackup;
++import io.aeron.cluster.service.ClusterMarkFile;
++import io.aeron.security.CredentialsSupplier;
++import org.agrona.CloseHelper;
++import org.agrona.IoUtil;
++import org.agrona.concurrent.AtomicBuffer;
++import org.agrona.concurrent.SystemEpochClock;
++import org.agrona.concurrent.status.AtomicCounter;
++import org.agrona.concurrent.status.CountersReader;
++
++import java.io.File;
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.time.LocalDateTime;
++import java.time.format.DateTimeFormatter;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.function.Consumer;
++
++/**
++ * rusteron's cluster backup, run as a process in place of Java's ClusterBackup when the environment variable
++ * {@code AERON_TEST_RUST_BACKUP} names its binary ({@code cluster_backup}): its settings those the context would
++ * have given Java's, on the backup node's media driver and Java archive, its counters found on the driver and set on
++ * the context for the tests to read, its error log read from its mark file. A credentials supplier is passed as what
++ * it gives: its encoded credentials, and its answer to a challenge (the test suppliers' answers do not depend on the
++ * challenge). Its output goes to {@code AERON_TEST_RUST_CM_LOG_DIR} when set, else beside the cluster directory.
++ */
++final class RustBackup implements AutoCloseable
++{
++    static final String BINARY = System.getenv("AERON_TEST_RUST_BACKUP");
++    private static final String LOG_DIR = System.getenv("AERON_TEST_RUST_CM_LOG_DIR");
++    private static final AtomicInteger STARTS = new AtomicInteger();
++
++    private final Process process;
++    private final File log;
++    private final File markFileDir;
++    private final List<Counter> counters = new ArrayList<>();
++    private ClusterMarkFile markFile;
++    private volatile boolean isClosing;
++
++    static boolean isEnabled()
++    {
++        return null != BINARY && !BINARY.isEmpty();
++    }
++
++    RustBackup(final ClusterBackup.Context ctx, final String aeronDirectoryName, final CountersReader countersReader)
++    {
++        final File clusterDir = ctx.clusterDir();
++        markFileDir = null != ctx.markFileDir() ? ctx.markFileDir() : clusterDir;
++        IoUtil.ensureDirectoryExists(clusterDir.getParentFile(), "cluster backup");
++        if (null != LOG_DIR && !LOG_DIR.isEmpty())
++        {
++            IoUtil.ensureDirectoryExists(new File(LOG_DIR), "rust backup logs");
++            log = new File(LOG_DIR, String.format("%s-%03d-backup.log",
++                LocalDateTime.now().format(DateTimeFormatter.ofPattern("HHmmss.SSS")), STARTS.incrementAndGet()));
++        }
++        else
++        {
++            log = new File(clusterDir.getParentFile(), "rust-backup.log");
++        }
++
++        final List<String> command = new ArrayList<>();
++        command.add(BINARY);
++        add(command, "--aeron-dir", aeronDirectoryName);
++        add(command, "--cluster-dir", clusterDir.getAbsolutePath());
++        if (null != ctx.markFileDir())
++        {
++            add(command, "--mark-file-dir", ctx.markFileDir().getAbsolutePath());
++        }
++        if (ctx.deleteDirOnStart())
++        {
++            command.add("--delete-dir-on-start");
++        }
++        add(command, "--cluster-id", ctx.clusterId());
++        add(command, "--consensus-channel", ctx.consensusChannel());
++        add(command, "--consensus-stream-id", ctx.consensusStreamId());
++        add(command, "--cluster-consensus-endpoints", ctx.clusterConsensusEndpoints());
++        add(command, "--log-stream-id", ctx.logStreamId());
++        add(command, "--catchup-endpoint", ctx.catchupEndpoint());
++        add(command, "--catchup-channel", ctx.catchupChannel());
++        addNs(command, "--cluster-backup-interval", ctx.clusterBackupIntervalNs());
++        addNs(command, "--cluster-backup-response-timeout", ctx.clusterBackupResponseTimeoutNs());
++        addNs(command, "--cluster-backup-progress-timeout", ctx.clusterBackupProgressTimeoutNs());
++        addNs(command, "--cluster-backup-cool-down-interval", ctx.clusterBackupCoolDownIntervalNs());
++        addNs(command, "--replication-progress-timeout", ctx.replicationProgressTimeoutNs());
++        if (ctx.replicationProgressIntervalNs() > 0)
++        {
++            addNs(command, "--replication-progress-interval", ctx.replicationProgressIntervalNs());
++        }
++        add(command, "--source-type", ctx.sourceType().name());
++        if (null != ctx.initialReplayStart())
++        {
++            add(command, "--initial-replay-start", ctx.initialReplayStart().name());
++        }
++        add(command, "--archive-control-request-channel", ctx.archiveContext().controlRequestChannel());
++        add(command, "--archive-control-request-stream-id", ctx.archiveContext().controlRequestStreamId());
++        add(command, "--archive-control-response-channel", ctx.archiveContext().controlResponseChannel());
++        add(command, "--archive-control-response-stream-id", ctx.archiveContext().controlResponseStreamId());
++        add(command, "--cluster-archive-control-request-channel", ctx.clusterArchiveContext().controlRequestChannel());
++        add(command, "--cluster-archive-control-request-stream-id",
++            ctx.clusterArchiveContext().controlRequestStreamId());
++        add(command, "--cluster-archive-control-response-channel",
++            ctx.clusterArchiveContext().controlResponseChannel());
++        add(command, "--cluster-archive-control-response-stream-id",
++            ctx.clusterArchiveContext().controlResponseStreamId());
++        add(command, "--error-buffer-length", ctx.errorBufferLength());
++        final CredentialsSupplier credentials = ctx.credentialsSupplier();
++        if (null != credentials)
++        {
++            final byte[] encoded = credentials.encodedCredentials();
++            if (null != encoded && encoded.length > 0)
++            {
++                add(command, "--credentials", new String(encoded, StandardCharsets.US_ASCII));
++            }
++            final byte[] answer = credentials.onChallenge(new byte[0]);
++            if (null != answer && answer.length > 0)
++            {
++                add(command, "--challenge-response", new String(answer, StandardCharsets.US_ASCII));
++            }
++        }
++
++        try
++        {
++            process = new ProcessBuilder(command)
++                .redirectErrorStream(true)
++                .redirectOutput(ProcessBuilder.Redirect.appendTo(log))
++                .start();
++            awaitReady();
++        }
++        catch (final IOException ex)
++        {
++            throw new IllegalStateException("cannot start " + BINARY, ex);
++        }
++
++        // Its counters are on the driver once it printed READY: it allocates them before.
++        final int clusterId = ctx.clusterId();
++        final long deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
++        while (counterId(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_STATE_TYPE_ID) < 0 ||
++            counterId(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_SNAPSHOT_RETRIEVE_COUNT_TYPE_ID) < 0)
++        {
++            if (System.nanoTime() > deadlineNs || !process.isAlive())
++            {
++                throw new IllegalStateException("rust backup's counters not found, see " + log);
++            }
++            sleep();
++        }
++        find(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_STATE_TYPE_ID, ctx::stateCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_LIVE_LOG_POSITION_TYPE_ID,
++            ctx::liveLogPositionCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_QUERY_DEADLINE_TYPE_ID,
++            ctx::nextQueryDeadlineMsCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_SNAPSHOT_RETRIEVE_COUNT_TYPE_ID,
++            ctx::snapshotRetrieveCounter);
++        final int errors = counterId(countersReader, clusterId, AeronCounters.CLUSTER_BACKUP_ERROR_COUNT_TYPE_ID);
++        ctx.errorCounter(new AtomicCounter(countersReader.valuesBuffer(), errors));
++        if (null == ctx.epochClock())
++        {
++            ctx.epochClock(SystemEpochClock.INSTANCE);
++        }
++
++        // Ended on its own, as Java's agent terminates: its counters close, as Java's context closes them.
++        process.onExit().thenRun(() ->
++        {
++            if (!isClosing)
++            {
++                counters.forEach(Counter::close);
++            }
++        });
++    }
++
++    /**
++     * The backup's error log, in its mark file.
++     */
++    AtomicBuffer errorLog()
++    {
++        if (null == markFile)
++        {
++            markFile = new ClusterMarkFile(
++                markFileDir, ClusterMarkFile.FILENAME, SystemEpochClock.INSTANCE, 0, (s) -> {});
++        }
++        return markFile.errorBuffer();
++    }
++
++    /**
++     * Stops the process as Java's close stops its agent: SIGTERM, on which it stops its recording and replay and
++     * closes its mark file. Its counters are closed, as Java's context closes them.
++     */
++    public void close()
++    {
++        isClosing = true;
++        counters.forEach(Counter::close);
++        process.destroy();
++        try
++        {
++            if (!process.waitFor(10, TimeUnit.SECONDS))
++            {
++                process.destroyForcibly();
++                process.waitFor(10, TimeUnit.SECONDS);
++            }
++        }
++        catch (final InterruptedException ex)
++        {
++            Thread.currentThread().interrupt();
++        }
++        CloseHelper.quietClose(markFile);
++    }
++
++    private void awaitReady() throws IOException
++    {
++        final long deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
++        while (System.nanoTime() < deadlineNs)
++        {
++            final String output = log.exists() ? Files.readString(log.toPath()) : "";
++            if (output.contains("READY"))
++            {
++                return;
++            }
++            if (!process.isAlive())
++            {
++                throw new IllegalStateException("rust backup exited " + process.exitValue() + ": " + output);
++            }
++            sleep();
++        }
++        throw new IllegalStateException("rust backup not ready, see " + log);
++    }
++
++    private static void sleep()
++    {
++        try
++        {
++            Thread.sleep(10);
++        }
++        catch (final InterruptedException ex)
++        {
++            Thread.currentThread().interrupt();
++            throw new IllegalStateException(ex);
++        }
++    }
++
++    private static int counterId(final CountersReader counters, final int clusterId, final int typeId)
++    {
++        final int[] found = { CountersReader.NULL_COUNTER_ID };
++        counters.forEach((counterId, type, keyBuffer, label) ->
++        {
++            if (CountersReader.NULL_COUNTER_ID == found[0] && type == typeId && keyBuffer.getInt(0) == clusterId)
++            {
++                found[0] = counterId;
++            }
++        });
++        return found[0];
++    }
++
++    private void find(
++        final CountersReader reader, final int clusterId, final int typeId, final Consumer<Counter> setter)
++    {
++        final int counterId = counterId(reader, clusterId, typeId);
++        if (CountersReader.NULL_COUNTER_ID != counterId)
++        {
++            final Counter counter = new Counter(reader, counterId);
++            counters.add(counter);
++            setter.accept(counter);
++        }
++    }
++
++    private static void add(final List<String> command, final String flag, final Object value)
++    {
++        if (null != value)
++        {
++            command.add(flag);
++            command.add(value.toString());
++        }
++    }
++
++    private static void addNs(final List<String> command, final String flag, final long valueNs)
++    {
++        add(command, flag, valueNs + "ns");
++    }
++}
+diff -ruN orig/aeron-test-support/src/main/java/io/aeron/test/cluster/RustClient.java new/aeron-test-support/src/main/java/io/aeron/test/cluster/RustClient.java
+--- orig/aeron-test-support/src/main/java/io/aeron/test/cluster/RustClient.java	1970-01-01 01:00:00
++++ new/aeron-test-support/src/main/java/io/aeron/test/cluster/RustClient.java	2026-10-31 17:43:53
+@@ -0,0 +1,404 @@
++/*
++ * Copyright 2026 the rusteron-cluster authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * https://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package io.aeron.test.cluster;
++
++import io.aeron.cluster.client.ClusterException;
++import io.aeron.cluster.client.EgressListener;
++import io.aeron.cluster.codecs.AdminRequestType;
++import io.aeron.cluster.codecs.AdminResponseCode;
++import io.aeron.cluster.codecs.EventCode;
++import io.aeron.exceptions.TimeoutException;
++import io.aeron.security.AuthenticationException;
++import org.agrona.DirectBuffer;
++import org.agrona.concurrent.UnsafeBuffer;
++
++import java.io.BufferedReader;
++import java.io.IOException;
++import java.io.InputStreamReader;
++import java.io.PrintWriter;
++import java.io.UncheckedIOException;
++import java.nio.charset.StandardCharsets;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++
++/**
++ * rusteron's cluster client, in a process of its own (the {@code client_lines} binary that
++ * {@code AERON_TEST_RUST_CLIENT} names), as a Java test drives Aeron's {@code AeronCluster}: connect, offer,
++ * keepalive, admin request, poll the egress into an {@link EgressListener}, close. It attaches to the media driver
++ * whose directory it is given, the test cluster's client driver.
++ */
++public final class RustClient implements AutoCloseable
++{
++    static final String BINARY = System.getenv("AERON_TEST_RUST_CLIENT");
++
++    /**
++     * An offer refused for the message itself, too long for instance: Aeron C's {@code AERON_PUBLICATION_ERROR},
++     * where Java's {@code AeronCluster.offer} throws.
++     */
++    public static final long PUBLICATION_ERROR = -6;
++
++    private final Process process;
++    private final PrintWriter in;
++    private final BufferedReader out;
++    private long clusterSessionId;
++    private int leaderMemberId;
++    private long leadershipTermId;
++    private String state = "Connected";
++
++    /**
++     * What a test sets: Java's {@code AeronCluster.Context}, as far as the Rust client takes it.
++     */
++    public static final class Context
++    {
++        String aeronDirectoryName;
++        String ingressChannel;
++        String ingressEndpoints;
++        String egressChannel;
++        long messageTimeoutNs = TimeUnit.SECONDS.toNanos(5);
++        long newLeaderTimeoutNs = -1;
++        byte[] credentials;
++        byte[] challengeResponse;
++
++        public Context aeronDirectoryName(final String aeronDirectoryName)
++        {
++            this.aeronDirectoryName = aeronDirectoryName;
++            return this;
++        }
++
++        public Context ingressChannel(final String ingressChannel)
++        {
++            this.ingressChannel = ingressChannel;
++            return this;
++        }
++
++        public Context ingressEndpoints(final String ingressEndpoints)
++        {
++            this.ingressEndpoints = ingressEndpoints;
++            return this;
++        }
++
++        public Context egressChannel(final String egressChannel)
++        {
++            this.egressChannel = egressChannel;
++            return this;
++        }
++
++        public Context messageTimeoutNs(final long messageTimeoutNs)
++        {
++            this.messageTimeoutNs = messageTimeoutNs;
++            return this;
++        }
++
++        public Context newLeaderTimeoutNs(final long newLeaderTimeoutNs)
++        {
++            this.newLeaderTimeoutNs = newLeaderTimeoutNs;
++            return this;
++        }
++
++        public Context credentials(final byte[] credentials, final byte[] challengeResponse)
++        {
++            this.credentials = credentials;
++            this.challengeResponse = challengeResponse;
++            return this;
++        }
++    }
++
++    private RustClient() throws IOException
++    {
++        if (null == BINARY)
++        {
++            throw new IllegalStateException("AERON_TEST_RUST_CLIENT names no client binary");
++        }
++        process = new ProcessBuilder(BINARY).redirectError(ProcessBuilder.Redirect.INHERIT).start();
++        in = new PrintWriter(process.getOutputStream(), true, StandardCharsets.US_ASCII);
++        out = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.US_ASCII));
++    }
++
++    /**
++     * Opens a session, as {@code AeronCluster.connect} does, throwing what it throws.
++     */
++    public static RustClient connect(final Context ctx)
++    {
++        final RustClient client;
++        try
++        {
++            client = new RustClient();
++        }
++        catch (final IOException ex)
++        {
++            throw new UncheckedIOException(ex);
++        }
++        final String answer = client.request(
++            "connect aeron_dir=" + ctx.aeronDirectoryName +
++            " ingress_channel=" + ctx.ingressChannel +
++            " ingress_endpoints=" + (null == ctx.ingressEndpoints ? "-" : ctx.ingressEndpoints) +
++            " egress_channel=" + ctx.egressChannel +
++            " message_timeout_ms=" + TimeUnit.NANOSECONDS.toMillis(ctx.messageTimeoutNs) +
++            " new_leader_timeout_ms=" +
++            (ctx.newLeaderTimeoutNs < 0 ? -1 : TimeUnit.NANOSECONDS.toMillis(ctx.newLeaderTimeoutNs)) +
++            " credentials=" + hex(ctx.credentials) +
++            " challenge_response=" + hex(ctx.challengeResponse)).get(0);
++        if (answer.startsWith("error "))
++        {
++            client.close();
++            throw exception(answer);
++        }
++        final String[] words = answer.split(" ");
++        client.clusterSessionId = Long.parseLong(words[1]);
++        client.leaderMemberId = Integer.parseInt(words[2]);
++        client.leadershipTermId = Long.parseLong(words[3]);
++        return client;
++    }
++
++    public long clusterSessionId()
++    {
++        return clusterSessionId;
++    }
++
++    public int leaderMemberId()
++    {
++        return leaderMemberId;
++    }
++
++    public long leadershipTermId()
++    {
++        return leadershipTermId;
++    }
++
++    public boolean isClosed()
++    {
++        return "Closed".equals(state);
++    }
++
++    /**
++     * The client's state, {@code AeronCluster.State}'s names in the Rust client's spelling.
++     */
++    public String state()
++    {
++        return state;
++    }
++
++    /**
++     * The leader's ingress publication's channel, or null with none.
++     */
++    public String ingressChannel()
++    {
++        final String[] words = request("state").get(0).split(" ");
++        state = words[1];
++        return "-".equals(words[5]) ? null : words[5];
++    }
++
++    public long offer(final DirectBuffer buffer, final int offset, final int length)
++    {
++        final byte[] bytes = new byte[length];
++        buffer.getBytes(offset, bytes);
++        return Long.parseLong(request("offer " + hex(bytes)).get(0).split(" ")[1]);
++    }
++
++    public boolean sendKeepAlive()
++    {
++        return yesNo(request("keepalive").get(0));
++    }
++
++    public boolean sendAdminRequestToTakeASnapshot(final long correlationId)
++    {
++        return yesNo(request("admin " + correlationId).get(0));
++    }
++
++    /**
++     * Polls the egress once, its callbacks made on {@code listener}: the work done.
++     */
++    public int pollEgress(final EgressListener listener)
++    {
++        int work = 0;
++        for (final String line : request("poll"))
++        {
++            final String[] w = line.split(" ", -1);
++            switch (w[0])
++            {
++                case "message":
++                {
++                    final byte[] payload = unhex(w[3]);
++                    listener.onMessage(
++                        Long.parseLong(w[1]), Long.parseLong(w[2]), new UnsafeBuffer(payload), 0, payload.length, null);
++                    break;
++                }
++                case "event":
++                    listener.onSessionEvent(
++                        Long.parseLong(w[1]),
++                        Long.parseLong(w[2]),
++                        Long.parseLong(w[3]),
++                        Integer.parseInt(w[4]),
++                        "NullVal".equals(w[5]) ? EventCode.NULL_VAL : EventCode.valueOf(w[5]),
++                        new String(unhex(w[6]), StandardCharsets.US_ASCII));
++                    break;
++                case "new-leader":
++                    leadershipTermId = Long.parseLong(w[2]);
++                    leaderMemberId = Integer.parseInt(w[3]);
++                    listener.onNewLeader(
++                        Long.parseLong(w[1]), leadershipTermId, leaderMemberId, "-".equals(w[4]) ? "" : w[4]);
++                    break;
++                case "admin-response":
++                {
++                    final byte[] payload = unhex(w[6]);
++                    listener.onAdminResponse(
++                        Long.parseLong(w[1]),
++                        Long.parseLong(w[2]),
++                        AdminRequestType.valueOf(w[3]),
++                        AdminResponseCode.valueOf(w[4]),
++                        new String(unhex(w[5]), StandardCharsets.US_ASCII),
++                        new UnsafeBuffer(payload),
++                        0,
++                        payload.length);
++                    break;
++                }
++                case "polled":
++                    work = Integer.parseInt(w[1]);
++                    state = w[2];
++                    break;
++                case "error":
++                    throw exception(line);
++                default:
++                    throw new IllegalStateException("unexpected line from the Rust client: " + line);
++            }
++        }
++        return work;
++    }
++
++    public void close()
++    {
++        if (process.isAlive())
++        {
++            in.println("close");
++            in.println("quit");
++            try
++            {
++                if (!process.waitFor(10, TimeUnit.SECONDS))
++                {
++                    process.destroyForcibly();
++                }
++            }
++            catch (final InterruptedException ex)
++            {
++                Thread.currentThread().interrupt();
++                process.destroyForcibly();
++            }
++        }
++        state = "Closed";
++    }
++
++    /**
++     * Sends a command, and reads its answer: the lines up to its last one.
++     */
++    private List<String> request(final String command)
++    {
++        in.println(command);
++        final List<String> lines = new ArrayList<>();
++        final String last = command.split(" ")[0];
++        try
++        {
++            while (true)
++            {
++                final String line = out.readLine();
++                if (null == line)
++                {
++                    throw new IllegalStateException("the Rust client exited during: " + last);
++                }
++                lines.add(line);
++                if (isLast(last, line))
++                {
++                    return lines;
++                }
++            }
++        }
++        catch (final IOException ex)
++        {
++            throw new UncheckedIOException(ex);
++        }
++    }
++
++    private static boolean isLast(final String command, final String line)
++    {
++        if (line.startsWith("error "))
++        {
++            return true;
++        }
++        switch (command)
++        {
++            case "poll":
++                return line.startsWith("polled ");
++            case "connect":
++                return line.startsWith("connected ");
++            case "close":
++                return line.equals("closed");
++            default:
++                return line.startsWith(command + " ");
++        }
++    }
++
++    private boolean yesNo(final String line)
++    {
++        if (line.startsWith("error "))
++        {
++            throw exception(line);
++        }
++        return Boolean.parseBoolean(line.split(" ")[1]);
++    }
++
++    private static RuntimeException exception(final String line)
++    {
++        final String[] w = line.split(" ", 3);
++        final String message = w.length > 2 ? new String(unhex(w[2]), StandardCharsets.US_ASCII) : "";
++        switch (w[1])
++        {
++            case "timeout":
++                return new TimeoutException(message);
++            case "authentication":
++                return new AuthenticationException(message);
++            default:
++                return new ClusterException(message);
++        }
++    }
++
++    private static String hex(final byte[] bytes)
++    {
++        if (null == bytes || 0 == bytes.length)
++        {
++            return "-";
++        }
++        final StringBuilder sb = new StringBuilder();
++        for (final byte b : bytes)
++        {
++            sb.append(String.format("%02x", b & 0xff));
++        }
++        return sb.toString();
++    }
++
++    private static byte[] unhex(final String text)
++    {
++        if ("-".equals(text) || text.isEmpty())
++        {
++            return new byte[0];
++        }
++        final byte[] bytes = new byte[text.length() / 2];
++        for (int i = 0; i < bytes.length; i++)
++        {
++            bytes[i] = (byte)Integer.parseInt(text.substring(2 * i, 2 * i + 2), 16);
++        }
++        return bytes;
++    }
++}
+diff -ruN orig/aeron-test-support/src/main/java/io/aeron/test/cluster/RustConsensusModule.java new/aeron-test-support/src/main/java/io/aeron/test/cluster/RustConsensusModule.java
+--- orig/aeron-test-support/src/main/java/io/aeron/test/cluster/RustConsensusModule.java	1970-01-01 01:00:00
++++ new/aeron-test-support/src/main/java/io/aeron/test/cluster/RustConsensusModule.java	2026-10-30 17:56:30
+@@ -0,0 +1,284 @@
++/*
++ * Copyright 2026 the rusteron-cluster authors
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * https://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package io.aeron.test.cluster;
++
++import io.aeron.AeronCounters;
++import io.aeron.Counter;
++import io.aeron.cluster.ConsensusModule;
++import org.agrona.IoUtil;
++import org.agrona.concurrent.status.CountersReader;
++
++import java.io.File;
++import java.io.IOException;
++import java.nio.file.Files;
++import java.time.LocalDateTime;
++import java.time.format.DateTimeFormatter;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.function.Consumer;
++
++/**
++ * rusteron's consensus module, run as a process in place of Java's when the environment variable
++ * {@code AERON_TEST_RUST_CM} names its binary: its settings those the context would have given Java's, its counters
++ * found on the node's media driver and set on the context for the tests to read. Its output goes to
++ * {@code AERON_TEST_RUST_CM_LOG_DIR} when set, which the tests do not clean up, else beside the cluster directory.
++ */
++final class RustConsensusModule implements AutoCloseable
++{
++    static final String BINARY = System.getenv("AERON_TEST_RUST_CM");
++    private static final String LOG_DIR = System.getenv("AERON_TEST_RUST_CM_LOG_DIR");
++    private static final AtomicInteger STARTS = new AtomicInteger();
++
++    private final Process process;
++    private final File log;
++    private final List<Counter> counters = new ArrayList<>();
++    private volatile boolean isClosing;
++
++    static boolean isEnabled()
++    {
++        return null != BINARY && !BINARY.isEmpty();
++    }
++
++    RustConsensusModule(final ConsensusModule.Context ctx, final String aeronDirectoryName, final CountersReader countersReader)
++    {
++        final File clusterDir = ctx.clusterDir();
++        if (ctx.deleteDirOnStart())
++        {
++            IoUtil.delete(clusterDir, true);
++        }
++        IoUtil.ensureDirectoryExists(clusterDir, "cluster");
++        if (null != LOG_DIR && !LOG_DIR.isEmpty())
++        {
++            IoUtil.ensureDirectoryExists(new File(LOG_DIR), "rust consensus module logs");
++            log = new File(LOG_DIR, String.format("%s-%03d-member%d.log",
++                LocalDateTime.now().format(DateTimeFormatter.ofPattern("HHmmss.SSS")), STARTS.incrementAndGet(),
++                ctx.clusterMemberId()));
++        }
++        else
++        {
++            log = new File(clusterDir.getParentFile(), "rust-consensus-module-" + ctx.clusterMemberId() + ".log");
++        }
++
++        final List<String> command = new ArrayList<>();
++        command.add(BINARY);
++        add(command, "--aeron-dir", aeronDirectoryName);
++        add(command, "--cluster-dir", clusterDir.getAbsolutePath());
++        add(command, "--cluster-id", ctx.clusterId());
++        add(command, "--cluster-member-id", ctx.clusterMemberId());
++        add(command, "--cluster-members", ctx.clusterMembers());
++        add(command, "--appointed-leader-id", ctx.appointedLeaderId());
++        add(command, "--service-count", ctx.serviceCount());
++        add(command, "--app-version", ctx.appVersion());
++        add(command, "--file-sync-level", ctx.fileSyncLevel());
++        add(command, "--max-concurrent-sessions", ctx.maxConcurrentSessions());
++        add(command, "--ingress-channel", ctx.ingressChannel());
++        add(command, "--ingress-stream-id", ctx.ingressStreamId());
++        add(command, "--log-channel", ctx.logChannel());
++        add(command, "--log-stream-id", ctx.logStreamId());
++        add(command, "--consensus-channel", ctx.consensusChannel());
++        add(command, "--consensus-stream-id", ctx.consensusStreamId());
++        add(command, "--control-channel", ctx.controlChannel());
++        add(command, "--replication-channel", ctx.replicationChannel());
++        add(command, "--follower-catchup-channel", ctx.followerCatchupChannel());
++        add(command, "--leader-archive-control-channel", ctx.leaderArchiveControlChannel());
++        add(command, "--archive-control-channel", ctx.archiveContext().controlRequestChannel());
++        add(command, "--archive-control-stream-id", ctx.archiveContext().controlRequestStreamId());
++        addNs(command, "--session-timeout", ctx.sessionTimeoutNs());
++        addNs(command, "--leader-heartbeat-timeout", ctx.leaderHeartbeatTimeoutNs());
++        addNs(command, "--leader-heartbeat-interval", ctx.leaderHeartbeatIntervalNs());
++        addNs(command, "--election-timeout", ctx.electionTimeoutNs());
++        addNs(command, "--election-status-interval", ctx.electionStatusIntervalNs());
++        addNs(command, "--startup-canvass-timeout", ctx.startupCanvassTimeoutNs());
++        addNs(command, "--termination-timeout", ctx.terminationTimeoutNs());
++        addNs(command, "--standby-snapshot-notification-delay", ctx.standbySnapshotNotificationProcessingDelayNs());
++        if (ctx.acceptStandbySnapshots())
++        {
++            command.add("--accept-standby-snapshots");
++        }
++        if (null != ctx.clusterClock())
++        {
++            add(command, "--time-unit", switch (ctx.clusterClock().timeUnit())
++            {
++                case MICROSECONDS -> "us";
++                case NANOSECONDS -> "ns";
++                default -> "ms";
++            });
++        }
++
++        try
++        {
++            process = new ProcessBuilder(command)
++                .redirectErrorStream(true)
++                .redirectOutput(ProcessBuilder.Redirect.appendTo(log))
++                .start();
++            awaitReady();
++        }
++        catch (final IOException ex)
++        {
++            throw new IllegalStateException("cannot start " + BINARY, ex);
++        }
++
++        // The module adds its counters through its Aeron client as it starts: on the driver soon after its READY.
++        final int clusterId = ctx.clusterId();
++        final long deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
++        while (counterId(countersReader, clusterId, AeronCounters.CLUSTER_CONSENSUS_MODULE_STATE_TYPE_ID) < 0 ||
++            counterId(countersReader, clusterId, AeronCounters.CLUSTER_NODE_ROLE_TYPE_ID) < 0 ||
++            counterId(countersReader, clusterId, AeronCounters.CLUSTER_ELECTION_STATE_TYPE_ID) < 0 ||
++            counterId(countersReader, clusterId, AeronCounters.CLUSTER_COMMIT_POSITION_TYPE_ID) < 0)
++        {
++            if (System.nanoTime() > deadlineNs || !process.isAlive())
++            {
++                throw new IllegalStateException("rust consensus module's counters not found, see " + log);
++            }
++            sleep();
++        }
++        find(countersReader, clusterId, AeronCounters.CLUSTER_CONSENSUS_MODULE_STATE_TYPE_ID, ctx::moduleStateCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_NODE_ROLE_TYPE_ID, ctx::clusterNodeRoleCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_CONTROL_TOGGLE_TYPE_ID, ctx::controlToggleCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_COMMIT_POSITION_TYPE_ID, ctx::commitPositionCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_ELECTION_STATE_TYPE_ID, ctx::electionStateCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_ELECTION_COUNT_TYPE_ID, ctx::electionCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_LEADERSHIP_TERM_ID_TYPE_ID, ctx::leadershipTermIdCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_SNAPSHOT_COUNTER_TYPE_ID, ctx::snapshotCounter);
++        find(countersReader, clusterId, AeronCounters.CLUSTER_CLIENT_TIMEOUT_COUNT_TYPE_ID, ctx::timedOutClientCounter);
++        find(countersReader, clusterId, AeronCounters.NODE_CONTROL_TOGGLE_TYPE_ID, ctx::nodeControlToggleCounter);
++        if (ctx.acceptStandbySnapshots())
++        {
++            find(
++                countersReader,
++                clusterId,
++                AeronCounters.CLUSTER_STANDBY_SNAPSHOT_COUNTER_TYPE_ID,
++                ctx::standbySnapshotCounter);
++        }
++        if (null == ctx.errorCounter())
++        {
++            find(countersReader, clusterId, AeronCounters.CLUSTER_CONSENSUS_MODULE_ERROR_COUNT_TYPE_ID, ctx::errorCounter);
++        }
++
++        // Ended on its own, as Java's module ends on a shutdown, an abort or a fatal error: its termination hook
++        // runs, then its counters close, as Java's agent closes them.
++        final Runnable terminationHook = ctx.terminationHook();
++        process.onExit().thenRun(() ->
++        {
++            if (!isClosing)
++            {
++                if (null != terminationHook)
++                {
++                    terminationHook.run();
++                }
++                counters.forEach(Counter::close);
++            }
++        });
++    }
++
++    /**
++     * Stops the process as Java's close stops its agent, without terminating the cluster: SIGTERM, on which it
++     * closes its mark file as Java's does, so that a module started again in its place is not refused. Its counters
++     * are closed as Java's module closes its own, so that the tests read them as closed rather than from a driver
++     * that may be gone.
++     */
++    public void close()
++    {
++        isClosing = true;
++        counters.forEach(Counter::close);
++        process.destroy();
++        try
++        {
++            if (!process.waitFor(10, TimeUnit.SECONDS))
++            {
++                process.destroyForcibly();
++                process.waitFor(10, TimeUnit.SECONDS);
++            }
++        }
++        catch (final InterruptedException ex)
++        {
++            Thread.currentThread().interrupt();
++        }
++    }
++
++    private void awaitReady() throws IOException
++    {
++        final long deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
++        while (System.nanoTime() < deadlineNs)
++        {
++            final String output = log.exists() ? Files.readString(log.toPath()) : "";
++            if (output.contains("READY"))
++            {
++                return;
++            }
++            if (!process.isAlive())
++            {
++                throw new IllegalStateException("rust consensus module exited " + process.exitValue() + ": " + output);
++            }
++            sleep();
++        }
++        throw new IllegalStateException("rust consensus module not ready, see " + log);
++    }
++
++    private static void sleep()
++    {
++        try
++        {
++            Thread.sleep(10);
++        }
++        catch (final InterruptedException ex)
++        {
++            Thread.currentThread().interrupt();
++            throw new IllegalStateException(ex);
++        }
++    }
++
++    private static int counterId(final CountersReader counters, final int clusterId, final int typeId)
++    {
++        final int[] found = { CountersReader.NULL_COUNTER_ID };
++        counters.forEach((counterId, type, keyBuffer, label) ->
++        {
++            if (CountersReader.NULL_COUNTER_ID == found[0] && type == typeId && keyBuffer.getInt(0) == clusterId)
++            {
++                found[0] = counterId;
++            }
++        });
++        return found[0];
++    }
++
++    private void find(
++        final CountersReader reader, final int clusterId, final int typeId, final Consumer<Counter> setter)
++    {
++        final int counterId = counterId(reader, clusterId, typeId);
++        if (CountersReader.NULL_COUNTER_ID != counterId)
++        {
++            final Counter counter = new Counter(reader, counterId);
++            counters.add(counter);
++            setter.accept(counter);
++        }
++    }
++
++    private static void add(final List<String> command, final String flag, final Object value)
++    {
++        if (null != value)
++        {
++            command.add(flag);
++            command.add(value.toString());
++        }
++    }
++
++    private static void addNs(final List<String> command, final String flag, final long valueNs)
++    {
++        add(command, flag, valueNs + "ns");
++    }
++}
+diff -ruN orig/aeron-test-support/src/main/java/io/aeron/test/cluster/TestBackupNode.java new/aeron-test-support/src/main/java/io/aeron/test/cluster/TestBackupNode.java
+--- orig/aeron-test-support/src/main/java/io/aeron/test/cluster/TestBackupNode.java	2026-10-31 22:53:46
++++ new/aeron-test-support/src/main/java/io/aeron/test/cluster/TestBackupNode.java	2026-10-31 22:54:48
+@@ -38,6 +38,7 @@
+     private final TestMediaDriver mediaDriver;
+     private final Archive archive;
+     private final ClusterBackup clusterBackup;
++    private final RustBackup rustBackup;
+     private final int index;
+     private final Context context;
+     private boolean isClosed = false;
+@@ -54,9 +55,22 @@
+             final String aeronDirectoryName = mediaDriver.context().aeronDirectoryName();
+             archive = Archive.launch(context.archiveContext.aeronDirectoryName(aeronDirectoryName));
+ 
+-            clusterBackup = ClusterBackup.launch(context.clusterBackupContext.aeronDirectoryName(aeronDirectoryName));
++            if (RustBackup.isEnabled())
++            {
++                clusterBackup = null;
++                rustBackup = new RustBackup(
++                    context.clusterBackupContext.aeronDirectoryName(aeronDirectoryName),
++                    aeronDirectoryName,
++                    mediaDriver.counters());
++            }
++            else
++            {
++                rustBackup = null;
++                clusterBackup =
++                    ClusterBackup.launch(context.clusterBackupContext.aeronDirectoryName(aeronDirectoryName));
++            }
+ 
+-            dataCollector.add(clusterBackup.context().clusterDir().toPath());
++            dataCollector.add(context.clusterBackupContext.clusterDir().toPath());
+             dataCollector.add(archive.context().archiveDir().toPath());
+             dataCollector.add(mediaDriver.context().aeronDirectory().toPath());
+         }
+@@ -79,7 +93,7 @@
+         if (!isClosed)
+         {
+             isClosed = true;
+-            CloseHelper.closeAll(clusterBackup, archive, mediaDriver);
++            CloseHelper.closeAll(clusterBackup, rustBackup, archive, mediaDriver);
+         }
+     }
+ 
+@@ -128,12 +142,12 @@
+ 
+     public AtomicBuffer clusterBackupErrorLog()
+     {
+-        return clusterBackup.context().clusterMarkFile().errorBuffer();
++        return null != rustBackup ? rustBackup.errorLog() : clusterBackup.context().clusterMarkFile().errorBuffer();
+     }
+ 
+     long clusterBackupErrorCount()
+     {
+-        return clusterBackup.context().errorCounter().get();
++        return context.clusterBackupContext.errorCounter().get();
+     }
+ 
+     int index()
+diff -ruN orig/aeron-test-support/src/main/java/io/aeron/test/cluster/TestCluster.java new/aeron-test-support/src/main/java/io/aeron/test/cluster/TestCluster.java
+--- orig/aeron-test-support/src/main/java/io/aeron/test/cluster/TestCluster.java	2026-10-30 13:02:05
++++ new/aeron-test-support/src/main/java/io/aeron/test/cluster/TestCluster.java	2026-10-30 13:03:45
+@@ -1549,12 +1549,12 @@
+     public void awaitSnapshotCount(final TestNode node, final long value)
+     {
+         clientKeepAlive.init();
+-        awaitCounter(node, value, node.consensusModule().context().snapshotCounter(), clientKeepAlive);
++        awaitCounter(node, value, node.consensusModuleContext().snapshotCounter(), clientKeepAlive);
+     }
+ 
+     public long getSnapshotCount(final TestNode node)
+     {
+-        final Counter snapshotCounter = node.consensusModule().context().snapshotCounter();
++        final Counter snapshotCounter = node.consensusModuleContext().snapshotCounter();
+ 
+         if (snapshotCounter.isClosed())
+         {
+@@ -1581,14 +1581,14 @@
+         awaitCounter(node,
+             value,
+             requireNonNull(
+-            node.consensusModule().context().standbySnapshotCounter(), "node not configured for standby snapshots"),
++            node.consensusModuleContext().standbySnapshotCounter(), "node not configured for standby snapshots"),
+             clientKeepAlive);
+     }
+ 
+     public long getStandbySnapshotCount(final TestNode node)
+     {
+         final Counter snapshotCounter = requireNonNull(
+-            node.consensusModule().context().standbySnapshotCounter(), "node not configured for standby snapshots");
++            node.consensusModuleContext().standbySnapshotCounter(), "node not configured for standby snapshots");
+ 
+         if (snapshotCounter.isClosed())
+         {
+@@ -1817,7 +1817,7 @@
+     public AtomicCounter getClusterControlToggle(final TestNode leaderNode)
+     {
+         final CountersReader counters = leaderNode.countersReader();
+-        final int clusterId = leaderNode.consensusModule().context().clusterId();
++        final int clusterId = leaderNode.consensusModuleContext().clusterId();
+         final AtomicCounter controlToggle = ClusterControl.findControlToggle(counters, clusterId);
+         assertNotNull(controlToggle);
+ 
+@@ -1847,7 +1847,7 @@
+     public AtomicCounter getNodeControlToggle(final TestNode node)
+     {
+         final CountersReader counters = node.countersReader();
+-        final int clusterId = node.consensusModule().context().clusterId();
++        final int clusterId = node.consensusModuleContext().clusterId();
+         final AtomicCounter controlToggle = NodeControl.findControlToggle(counters, clusterId);
+         assertNotNull(controlToggle);
+ 
+@@ -1942,7 +1942,7 @@
+         }
+ 
+         final RecordingDescriptorCollector collector = new RecordingDescriptorCollector(10);
+-        final RecordingLog recordingLog = new RecordingLog(node.consensusModule().context().clusterDir(), false);
++        final RecordingLog recordingLog = new RecordingLog(node.consensusModuleContext().clusterDir(), false);
+         final RecordingLog.Entry latestSnapshot = requireNonNull(recordingLog.getLatestSnapshot(SERVICE_ID));
+         final long recordingId = recordingLog.findLastTermRecordingId();
+         if (RecordingPos.NULL_RECORDING_ID == recordingId)
+@@ -1964,8 +1964,7 @@
+                 };
+ 
+             final AeronArchive.Context aeronArchiveCtx = node
+-                .consensusModule()
+-                .context()
++                .consensusModuleContext()
+                 .archiveContext()
+                 .clone();
+ 
+@@ -2020,7 +2019,7 @@
+         }
+ 
+         final RecordingDescriptorCollector collector = new RecordingDescriptorCollector(10);
+-        final RecordingLog recordingLog = new RecordingLog(node.consensusModule().context().clusterDir(), false);
++        final RecordingLog recordingLog = new RecordingLog(node.consensusModuleContext().clusterDir(), false);
+         final long recordingId = recordingLog.findLastTermRecordingId();
+         if (RecordingPos.NULL_RECORDING_ID == recordingId)
+         {
+@@ -2041,8 +2040,7 @@
+                 };
+ 
+             final AeronArchive.Context aeronArchiveCtx = node
+-                .consensusModule()
+-                .context()
++                .consensusModuleContext()
+                 .archiveContext()
+                 .clone();
+ 
+@@ -2096,8 +2094,7 @@
+                 };
+ 
+             final AeronArchive.Context aeronArchiveCtx = node
+-                .consensusModule()
+-                .context()
++                .consensusModuleContext()
+                 .archiveContext()
+                 .clone();
+ 
+@@ -2131,7 +2128,7 @@
+     public void validateRecordingLog(final TestNode leader)
+     {
+         final CapturingPrintStream out = new CapturingPrintStream();
+-        final File clusterDir = leader.consensusModule().context().clusterDir();
++        final File clusterDir = leader.consensusModuleContext().clusterDir();
+         assertTrue(
+             ClusterTool.validateRecordingLog(clusterDir, out.resetAndGetPrintStream()),
+             out.flushAndGetContent());
+@@ -2232,7 +2229,7 @@
+         {
+             if (null != node)
+             {
+-                try (RecordingLog recordingLog = new RecordingLog(node.consensusModule().context().clusterDir(), false))
++                try (RecordingLog recordingLog = new RecordingLog(node.consensusModuleContext().clusterDir(), false))
+                 {
+                     assertTrue(recordingLog.invalidateLatestSnapshot());
+                 }
+@@ -2354,7 +2351,7 @@
+                 continue;
+             }
+ 
+-            try (RecordingLog recordingLog = new RecordingLog(node.consensusModule().context().clusterDir(), false))
++            try (RecordingLog recordingLog = new RecordingLog(node.consensusModuleContext().clusterDir(), false))
+             {
+                 if (null == firstEntries)
+                 {
+@@ -2384,7 +2381,7 @@
+     public void validateRecordingLogWithReplay(final int nodeId)
+     {
+         final TestNode node = node(nodeId);
+-        final ConsensusModule.Context consensusModuleCtx = node.consensusModule().context();
++        final ConsensusModule.Context consensusModuleCtx = node.consensusModuleContext();
+         final AeronArchive.Context clone = consensusModuleCtx.archiveContext().clone();
+         try (
+             AeronArchive aeronArchive = AeronArchive.connect(clone);
+@@ -2452,7 +2449,7 @@
+         {
+             if (null != node)
+             {
+-                ClusterTool.seedRecordingLogFromSnapshot(node.consensusModule().context().clusterDir());
++                ClusterTool.seedRecordingLogFromSnapshot(node.consensusModuleContext().clusterDir());
+             }
+         }
+     }
+@@ -2525,7 +2522,7 @@
+ 
+     public void waitForError(final TestNode follower, final Predicate<String> predicate)
+     {
+-        final File consensusModuleDir = follower.consensusModule().context().clusterDir();
++        final File consensusModuleDir = follower.consensusModuleContext().clusterDir();
+         final ClusterMarkFile clusterMarkFile = new ClusterMarkFile(
+             consensusModuleDir, ClusterMarkFile.FILENAME, new SystemEpochClock(), 10_000, System.out::println);
+ 
+@@ -2564,7 +2561,7 @@
+ 
+     public void stopNodeGracefully(final TestNode follower)
+     {
+-        follower.consensusModule().close();
++        follower.closeConsensusModule();
+     }
+ 
+     public void waitForServiceTermination(final TestNode follower)
+@@ -2705,7 +2702,7 @@
+ 
+     public List<SnapshotRecord> snapshots(final TestNode testNode)
+     {
+-        final File file = testNode.consensusModule().context().clusterDir();
++        final File file = testNode.consensusModuleContext().clusterDir();
+         try (RecordingLog recordingLog = new RecordingLog(file, false))
+         {
+             final TreeMap<Long, List<RecordingLog.Entry>> collect = recordingLog.entries().stream()
+diff -ruN orig/aeron-test-support/src/main/java/io/aeron/test/cluster/TestNode.java new/aeron-test-support/src/main/java/io/aeron/test/cluster/TestNode.java
+--- orig/aeron-test-support/src/main/java/io/aeron/test/cluster/TestNode.java	2026-10-30 13:02:05
++++ new/aeron-test-support/src/main/java/io/aeron/test/cluster/TestNode.java	2026-10-30 13:03:59
+@@ -34,6 +34,7 @@
+ import io.aeron.cluster.ConsensusModuleExtension;
+ import io.aeron.cluster.ConsensusModuleVersion;
+ import io.aeron.cluster.ElectionState;
++import io.aeron.cluster.RecordingLog;
+ import io.aeron.cluster.client.ClusterException;
+ import io.aeron.cluster.codecs.CloseReason;
+ import io.aeron.cluster.service.ClientSession;
+@@ -94,6 +95,7 @@
+ {
+     private final Archive archive;
+     private final ConsensusModule consensusModule;
++    private final RustConsensusModule rustConsensusModule;
+     private final ClusteredServiceContainer[] containers;
+     private final TestService[] services;
+     private final Context context;
+@@ -179,7 +181,17 @@
+ 
+             final AeronArchive.Context archiveContext = context.consensusModuleContext.archiveContext().clone();
+ 
+-            consensusModule = ConsensusModule.launch(context.consensusModuleContext);
++            if (RustConsensusModule.isEnabled())
++            {
++                consensusModule = null;
++                rustConsensusModule = new RustConsensusModule(
++                    context.consensusModuleContext, aeronDirectoryName, mediaDriver.counters());
++            }
++            else
++            {
++                rustConsensusModule = null;
++                consensusModule = ConsensusModule.launch(context.consensusModuleContext);
++            }
+             final File baseDir = context.consensusModuleContext.clusterDir().getParentFile();
+             dataCollector.addForCleanup(baseDir);
+ 
+@@ -207,7 +219,7 @@
+                 containers[i] = ClusteredServiceContainer.launch(ctx);
+             }
+ 
+-            dataCollector.add(consensusModule.context().clusterDir().toPath());
++            dataCollector.add(consensusModuleContext().clusterDir().toPath());
+             dataCollector.add(archive.context().archiveDir().toPath());
+             dataCollector.add(mediaDriver.context().aeronDirectory().toPath());
+         }
+@@ -250,6 +262,24 @@
+         return consensusModule;
+     }
+ 
++    /**
++     * The consensus module's context: Java's, or the one rusteron's runs with, its counters those it allocated.
++     *
++     * @return the consensus module's context.
++     */
++    public ConsensusModule.Context consensusModuleContext()
++    {
++        return null != consensusModule ? consensusModule.context() : context.consensusModuleContext;
++    }
++
++    /**
++     * Closes the consensus module, Java's or rusteron's.
++     */
++    public void closeConsensusModule()
++    {
++        CloseHelper.closeAll(consensusModule, rustConsensusModule);
++    }
++
+     public ClusteredServiceContainer container()
+     {
+         if (1 != containers.length)
+@@ -285,7 +315,8 @@
+         if (!isClosed)
+         {
+             isClosed = true;
+-            CloseHelper.closeAll(consensusModule, () -> CloseHelper.closeAll(containers), archive, mediaDriver);
++            CloseHelper.closeAll(
++                consensusModule, rustConsensusModule, () -> CloseHelper.closeAll(containers), archive, mediaDriver);
+         }
+     }
+ 
+@@ -296,12 +327,12 @@
+ 
+     public void gracefulClose()
+     {
+-        CloseHelper.closeAll(consensusModule, () -> CloseHelper.closeAll(containers));
++        CloseHelper.closeAll(consensusModule, rustConsensusModule, () -> CloseHelper.closeAll(containers));
+     }
+ 
+     public Cluster.Role role()
+     {
+-        final Counter roleCounter = consensusModule.context().clusterNodeRoleCounter();
++        final Counter roleCounter = consensusModuleContext().clusterNodeRoleCounter();
+         if (!roleCounter.isClosed())
+         {
+             return Cluster.Role.get(roleCounter);
+@@ -319,22 +350,22 @@
+ 
+     public ElectionState electionState()
+     {
+-        return ElectionState.get(consensusModule.context().electionStateCounter());
++        return ElectionState.get(consensusModuleContext().electionStateCounter());
+     }
+ 
+     public long electionCount()
+     {
+-        return consensusModule.context().electionCounter().get();
++        return consensusModuleContext().electionCounter().get();
+     }
+ 
+     public ConsensusModule.State moduleState()
+     {
+-        return ConsensusModule.State.get(consensusModule.context().moduleStateCounter());
++        return ConsensusModule.State.get(consensusModuleContext().moduleStateCounter());
+     }
+ 
+     public long commitPosition()
+     {
+-        final Counter counter = consensusModule.context().commitPositionCounter();
++        final Counter counter = consensusModuleContext().commitPositionCounter();
+         if (counter.isClosed())
+         {
+             return NULL_POSITION;
+@@ -358,7 +389,18 @@
+     {
+         if (NULL_RECORDING_ID == logRecordingId)
+         {
+-            final long recordingId = consensusModule().context().recordingLog().findLastTermRecordingId();
++            final long recordingId;
++            if (null != consensusModule)
++            {
++                recordingId = consensusModuleContext().recordingLog().findLastTermRecordingId();
++            }
++            else
++            {
++                try (RecordingLog recordingLog = new RecordingLog(consensusModuleContext().clusterDir(), false))
++                {
++                    recordingId = recordingLog.findLastTermRecordingId();
++                }
++            }
+             if (NULL_RECORDING_ID == recordingId)
+             {
+                 fail("no recording for last term");
+@@ -411,7 +453,7 @@
+ 
+     public int memberId()
+     {
+-        return consensusModule.context().clusterMemberId();
++        return consensusModuleContext().clusterMemberId();
+     }
+ 
+     CountersReader countersReader()
+@@ -422,7 +464,7 @@
+     public ClusterMembership clusterMembership()
+     {
+         final ClusterMembership clusterMembership = new ClusterMembership();
+-        final File clusterDir = consensusModule.context().clusterDir();
++        final File clusterDir = consensusModuleContext().clusterDir();
+ 
+         if (!ClusterTool.listMembers(clusterMembership, clusterDir, TimeUnit.SECONDS.toMillis(3)))
+         {
