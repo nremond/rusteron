@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Measures the Rust service container against Java's, on one log: one node of
-# Java Aeron Cluster 1.53.3 (consensus module and archive, its cluster clock in
+# Java Aeron Cluster 1.54.2 (consensus module and archive, its cluster clock in
 # nanoseconds), the Rust bench service as service 0 and Java's as service 1,
 # each on the same C media driver, and an open-loop client on a driver of its
 # own. Everything busy-spins, each on cores of its own. Release builds only.
@@ -31,7 +31,7 @@ MEASURE=${MEASURE:-20}
 PORT_BASE=${PORT_BASE:-23000}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 REPO=$(cd "$HERE/.." && pwd)
-JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 JAVA=${JAVA:-java}
 JVM_FLAGS=(--add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/java.util.zip=ALL-UNNAMED
   --sun-misc-unsafe-memory-access=allow -XX:+UseZGC -Xms2g -Xmx2g -XX:+AlwaysPreTouch

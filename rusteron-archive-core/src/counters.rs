@@ -1,5 +1,5 @@
 //! The counters an archive allocates, their keys and labels as Aeron Archive
-//! 1.53.3 writes them (`ArchiveCounters`, `RecordingPos`,
+//! 1.54.2 writes them (`ArchiveCounters`, `RecordingPos`,
 //! `ControlSessionCounter`): clusters find a recording's position by its
 //! key, operators read the rest with `AeronStat`.
 

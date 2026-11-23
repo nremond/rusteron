@@ -1,4 +1,4 @@
-//! `verify_recording` against Aeron 1.53.3's own `ArchiveTool verify`
+//! `verify_recording` against Aeron 1.54.2's own `ArchiveTool verify`
 //! (`java/io/aeron/archive/CatalogFixtures.java`, run by `fixtures.sh`): on
 //! the recordings in `verify/before/`, each damage the tool reports in the
 //! tool's words, and each whole recording's stop where the tool puts it.

@@ -1,4 +1,4 @@
-//! A consensus module's files and counters against Aeron 1.53.3's own code
+//! A consensus module's files and counters against Aeron 1.54.2's own code
 //! (`java/io/aeron/cluster/ConsensusFixtures.java`, run by `fixtures.sh`):
 //! the recording log Java's operations make, the recovery plans Java makes of
 //! real recordings, the node state file, the counters' keys and labels.

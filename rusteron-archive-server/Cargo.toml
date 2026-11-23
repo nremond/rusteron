@@ -5,7 +5,7 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/nremond/rusteron"
 readme = "README.md"
-description = "Aeron Archive's server on Aeron's C client, wire- and on-disk-compatible with Aeron 1.53.3: the requests Aeron Cluster makes of its archive."
+description = "Aeron Archive's server on Aeron's C client, wire- and on-disk-compatible with Aeron 1.54.2: the requests Aeron Cluster makes of its archive."
 keywords = ["aeron", "aeron-archive", "aeron-cluster", "low-latency"]
 categories = ["network-programming"]
 

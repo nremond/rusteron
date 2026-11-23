@@ -1,6 +1,6 @@
 # Aeron Cluster in Rust: the consensus module
 
-The third milestone of Aeron Cluster in Rust (see `design.md` for the service container and `rusteron-archive-server/docs/design.md` for the archive): the consensus module, wire- and on-disk-compatible with Java Aeron 1.53.3, as a sans-IO state machine driven by a shell on Aeron's C client. Where Java's election can lose committed entries, the module follows Raft's rules instead.
+The third milestone of Aeron Cluster in Rust (see `design.md` for the service container and `rusteron-archive-server/docs/design.md` for the archive): the consensus module, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23), as a sans-IO state machine driven by a shell on Aeron's C client. Where Java's election can lose committed entries, the module follows Raft's rules instead.
 
 | | |
 |---|---|
@@ -16,7 +16,7 @@ The consensus module is the last Java piece of a node: with it in Rust, a node c
 
 ## 2. The contract
 
-- **The wire.** Every consensus, ingress, egress, service and archive message as Java 1.53.3 encodes it; a Rust module joins a cluster of Java modules, as leader or follower, and Java clients and services see no difference.
+- **The wire.** Every consensus, ingress, egress, service and archive message as Java 1.54.2 encodes it (cluster schema 18); a Rust module joins a cluster of Java modules, as leader or follower, and Java clients and services see no difference.
 - **The disk.** `recording.log`, `node-state.dat`, `cluster-mark.dat` and the counters 200–241 as Java writes them: ClusterTool reads a Rust node's files. The mark file's error log gives each entry Java's category, WARN for what Java records as a `ClusterEvent`, since Aeron's tests and tools filter on it.
 - **The behaviour.** Java's, step for step (the election's 18 states, recovery, catch-up, the commit rule, sessions, timers, snapshots, termination), except where it loses committed entries or leaves a member out for good (§4).
 

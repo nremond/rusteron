@@ -1,6 +1,6 @@
 //! Aeron Cluster's clustered service container on Aeron's C client, through
 //! rusteron: runs a Rust [`ClusteredService`] against Aeron Cluster's
-//! consensus module (Java's, 1.53.3), wire- and on-disk-compatible.
+//! consensus module (Java's, 1.54.2), wire- and on-disk-compatible.
 //!
 //! The container's logic is `rusteron-cluster-core`'s, a sans-IO state
 //! machine; this crate is its shell: the duty cycle, Aeron's publications,

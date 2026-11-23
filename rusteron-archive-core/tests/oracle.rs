@@ -1,5 +1,5 @@
 //! What the archive makes of a client's channels, and the counters it
-//! allocates, against Aeron 1.53.3's own code (`java/io/aeron/archive/ConductorFixtures.java`,
+//! allocates, against Aeron 1.54.2's own code (`java/io/aeron/archive/ConductorFixtures.java`,
 //! run by `fixtures.sh`).
 
 use std::fs;

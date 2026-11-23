@@ -1,4 +1,4 @@
-//! The catalog of recordings, `archive.catalog`, as Aeron Archive 1.53.3
+//! The catalog of recordings, `archive.catalog`, as Aeron Archive 1.54.2
 //! writes it (`Catalog.java`), held as an image of the file: the shell reads
 //! the file into it, and writes back the ranges a change dirtied
 //! ([`Catalog::take_writes`]), syncing as the archive's `catalogFileSyncLevel`

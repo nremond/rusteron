@@ -157,13 +157,13 @@ fn a_client_connects_as_to_java() {
     let image = client_image();
     shell.request(
         &image,
-        &client::auth_connect(1, 20, client::VERSION, RESPONSE_CHANNEL, "name=test version=1.53.3"),
+        &client::auth_connect(1, 20, client::VERSION, RESPONSE_CHANNEL, "name=test version=1.54.2"),
     );
     let (key, label) =
-        counters::control_session(ARCHIVE_ID, FIRST_SESSION, "name=test version=1.53.3", "aeron:ipc", -321);
+        counters::control_session(ARCHIVE_ID, FIRST_SESSION, "name=test version=1.54.2", "aeron:ipc", -321);
     assert_eq!(
         label,
-        "control-session: name=test version=1.53.3 sourceIdentity=aeron:ipc sessionId=-321 - archiveId=42"
+        "control-session: name=test version=1.54.2 sourceIdentity=aeron:ipc sessionId=-321 - archiveId=42"
     );
     assert_eq!(
         shell.actions,

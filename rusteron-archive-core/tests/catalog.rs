@@ -1,4 +1,4 @@
-//! The catalog and the segments against Aeron 1.53.3's own `Catalog`
+//! The catalog and the segments against Aeron 1.54.2's own `Catalog`
 //! (`java/io/aeron/archive/CatalogFixtures.java`, run by `fixtures.sh`): the
 //! operations Java applied, replayed, write Java's file byte for byte; Java's
 //! file reads back as Java wrote it; and the stop position recovered from
@@ -162,7 +162,8 @@ fn a_next_recording_id_behind_the_entries_is_refused() {
 /// `isValidFragment` (1.54.0) calls a zero-length fragment invalid, so it
 /// asks to truncate; it stops where it would have, and "truncating" leaves
 /// the file as it was. This archive finds no straddle: one would keep it
-/// from starting without `--truncate-torn-fragments`.
+/// from starting without `--truncate-torn-fragments`, as it keeps Java's
+/// (aeron-io/aeron#2261).
 const JAVA_SPURIOUS_STRADDLE: &str = "empty-segment";
 
 #[test]

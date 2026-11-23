@@ -1,4 +1,4 @@
-//! What `ArchiveTool verify` checks of a recording (Aeron 1.53.3,
+//! What `ArchiveTool verify` checks of a recording (Aeron 1.54.2,
 //! `ArchiveTool.verifyRecording`, without options: the last segment file
 //! only, no checksums), for an archive with no JVM beside it to run the tool.
 //!

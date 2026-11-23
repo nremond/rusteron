@@ -1,6 +1,6 @@
 # Aeron Cluster in Rust: the cluster backup
 
-Part of the fifth milestone of Aeron Cluster in Rust (see `design.md` for the service container, `consensus.md` for the consensus module and `client.md` for the client): Java Aeron 1.53.3's `ClusterBackup`, which copies a cluster's snapshots and live log into an archive of its own, as a sans-IO state machine driven by a shell on Aeron's C client.
+Part of the fifth milestone of Aeron Cluster in Rust (see `design.md` for the service container, `consensus.md` for the consensus module and `client.md` for the client): Java Aeron 1.54.2's `ClusterBackup` (1.53.3's until 2026-11-23), which copies a cluster's snapshots and live log into an archive of its own, as a sans-IO state machine driven by a shell on Aeron's C client.
 
 | | |
 |---|---|

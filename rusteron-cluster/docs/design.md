@@ -1,6 +1,6 @@
 # Aeron Cluster in Rust: the service container
 
-Aeron Cluster re-implemented in Rust, in this fork of rusteron, wire- and on-disk-compatible with Java Aeron 1.53.3, as sans-IO state machines driven by a shell on Aeron's C client. This document covers its first piece, the clustered service container (M1), and what it rests on (M0).
+Aeron Cluster re-implemented in Rust, in this fork of rusteron, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23, which the dated results below were measured on unless they say otherwise; §10 has the move), as sans-IO state machines driven by a shell on Aeron's C client. This document covers its first piece, the clustered service container (M1), and what it rests on (M0).
 
 | | |
 |---|---|
@@ -18,7 +18,7 @@ Aeron is a transport built for latency control, and Aeron Cluster runs Raft-styl
 Three decisions shape it:
 
 - **Sans-IO.** Each piece is a state machine that takes events and time and returns actions: no clock, no randomness, no I/O. A shell drives it on Aeron's C client in production; a simulator can drive it in virtual time. Upstream fixes are re-derived from Java, not ported line by line.
-- **Wire- and on-disk-compatible with Java 1.53.3**, the version rusteron's Aeron submodule pins. Rust and Java pieces interoperate, and Java's `ClusterTool` and `ArchiveTool` read Rust nodes' files.
+- **Wire- and on-disk-compatible with Java 1.54.2**, the version rusteron's Aeron submodule pins. Rust and Java pieces interoperate, and Java's `ClusterTool` and `ArchiveTool` read Rust nodes' files.
 - **One piece at a time, Java as the oracle.** The container first, against Java's consensus module; then the archive under Java's cluster; then the consensus module among Java nodes.
 
 ## 2. The contract
@@ -63,8 +63,8 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 | Choice | Why |
 |---|---|
 | Sans-IO, re-derived from Java | Simulation in virtual time, where consensus defects show that real clusters rarely reach; at the cost of porting each upstream fix by hand. |
-| Wire and on-disk compatibility with 1.53.3 | Each Rust piece is tested inside a Java cluster, and Java's tools work on Rust nodes. 1.53.3 is what rusteron's Aeron C is. |
-| Codecs from sbe-tool 1.40.2, checked in | The SBE version Aeron 1.53.3 generates its own with; checked in so building needs no Java. Its readers check only the buffer's length, so the core checks lengths and variable-length fields before decoding. |
+| Wire and on-disk compatibility with 1.54.2 | Each Rust piece is tested inside a Java cluster, and Java's tools work on Rust nodes. 1.54.2 is what rusteron's Aeron C is. |
+| Codecs from sbe-tool 1.42.0, checked in | The SBE version Aeron 1.54.2 generates its own with; checked in so building needs no Java. Its readers check only the buffer's length, so the core checks lengths and variable-length fields before decoding. |
 | Nothing for the consensus module dropped | Java's `scheduleTimer` returns false under back-pressure and leaves the retry to the service; a service that drops such a timer stops its cluster's clock. Here the queue is retried in order, and a full queue (1,024 messages) holds the log instead, ending the poll at the message that filled it. |
 | `Apply::Retry` | A service fed by a bounded ring (an engine on its own thread) can refuse an entry it cannot take yet, without blocking the container's thread. |
 | Answers offered as their callback returns; a queue per client only for refusals, 4,096 frames in all, 5 s to be taken | Java's service offers from inside its callback; this offers right after, so a refused answer can still be discarded with its entry. A slow client holds the log rather than lose answers, but one that never takes them is dropped and reported, not waited on forever. |
@@ -75,7 +75,7 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 
 ## 5. Tests
 
-**Codecs** (`rusteron-cluster-codecs/tests/golden.rs`, 18 tests): every message the container reads or writes, and the mark file's header, written by Aeron 1.53.3's own Java codecs (`java/GoldenCodecs.java`), decodes in Rust to the values Java set and encodes back to the same bytes. A field new in version 17 reads as unset from an older message.
+**Codecs** (`rusteron-cluster-codecs/tests/golden.rs`, 18 tests): every message the container reads or writes, and the mark file's header, written by Aeron 1.54.2's own Java codecs (`java/GoldenCodecs.java`), decodes in Rust to the values Java set and encodes back to the same bytes. A field new in version 17 reads as unset from an older message.
 
 **The core** (`rusteron-cluster-core`, 22 unit tests, 11 container tests) against the testkit: a log writer that frames messages as a publication does, the consensus module's messages, a fake consensus module holding acks to Java's rule. A whole life through a snapshot and termination; a restart from that snapshot; a snapshot cut short; a refused join tried again; 1,000 timers under refusals arriving in order; a full queue holding the log; an answer offered in the poll that applied its message; a refused answer offered again, in its place, with the session's next answers behind it; a follower's egress mocked; the log ended at the next join. A property test (200 cases): logs of random messages up to 6,000 bytes, framed at MTUs of 1,408 to 8,192, committed a few at a time, polled a few fragments at a time, with random retries: each message applied once, in order, at the position after its last frame, and what a refused delivery sent discarded.
 
@@ -180,4 +180,46 @@ cargo build --release -p rusteron-cluster-interop --features static
 rusteron-cluster-interop/scripts/bench.sh "1000 10000 100000 200000"   # on an otherwise idle machine
 ```
 
-`AERON_ALL_JAR` names the Java 1.53.3 jar (default: the local Maven repository); `KEEP=1` keeps a run's work directory, logs, traces and archives.
+`AERON_ALL_JAR` names the Java 1.54.2 jar (default: the local Maven repository); `KEEP=1` keeps a run's work directory, logs, traces and archives.
+
+## 10. rusteron 0.3 and Aeron 1.54.2
+
+On 2026-11-23 the cluster's crates moved onto upstream rusteron 0.3.2, its Aeron C at 1.54.2, and Java 1.54.2 became the oracle. The results in the sections above were measured on 1.53.3 unless they say otherwise.
+
+**rusteron 0.3's API.** The archive server and the cluster shells follow 0.3's ownership and thread-safety redesign:
+
+- Callbacks Aeron keeps (images available and gone, counters gone) take a `SharedHandler`, their state behind a mutex, and receive borrowed views.
+- The counters reader is borrowed from the client where it is needed.
+- A subscription a poll hands over is shared through an `Rc`, as the 0.2 handle was, and only its last owner closes it.
+- A destination change's command holds its publication or subscription, so the shell drops it once its poll has finished. Forgetting it, as 0.2 needed, left the resource open after its close: a leader that stepped down kept publishing its log, so its service never learned it was a follower. Aeron's election tests found it.
+- A counter's value is a `Result`.
+- The cores, being sans-IO, did not change.
+
+Aeron C 1.54's fail-fast client (every call refused once a fatal error has closed the client) needed nothing: each shell already ends once `aeron.is_closed()`, as Java's agents do.
+
+**What Java 1.54 changed, followed.**
+
+- The cluster's codecs are at schema 18, regenerated with sbe-tool 1.42.0. A cluster action and a snapshot marker carry the term's base log position, from the recording log or else the recovery plan, as Java's `termBaseLogPosition()` has it. The container copies the action's into its markers.
+- A cluster action's log position allows for a term's padding: one that does not fit the rest of its term lands at the next term's start, as Java takes the position from its claim.
+- The archive counts its recording limit from its subscriptions and recordings, and checks again as an image arrives.
+- A service message or ack naming an unknown service is reported and dropped.
+- A leader with no service snapshots as soon as the snapshot's action is committed.
+- Every Java-written fixture was rewritten with Java 1.54.2.
+
+**What it changed, not followed.**
+
+- A stopped catch-up replay is closed, not revoked (aeron-io/aeron#2259; proposed for Java in #2260).
+- Java 1.54's archive takes an empty segment read from a page-aligned offset for a torn fragment, and refuses to start over it (aeron-io/aeron#2261). This archive keeps finding no straddle, and its tests state the divergence.
+
+**Checked on the move.**
+
+- **Aeron 1.54.2's own tests**, with Rust modules on every node:
+  - `ClusterTest` passes 75 of its 94 cases. The 19 others are the ones out of scope on 1.53.3 (`consensus.md` §5). The 75 include 1.54's `shouldCaptureTermBaseLogPositionInSnapshotMarker`, the harness reading the module's recording log from its file.
+  - `RustClientTest` and `StandbySnapshotNoticeTest` pass every case but the five authentication ones, left out as before (`client.md` §5).
+  - `ClusterBackupTest` on Rust's backup: 23 of 25, the two needing an authenticator (`backup.md` §5).
+  - The C archive client's tests: 61 of 80 on the Rust archive, the other 19 using what it does not serve (the archive's design, §5).
+- **Interop beside Java 1.54.2**: every scenario, twice in a row, on each of the six setups (Java's module and archive, the Rust archive, the Rust module, both, the Rust client, Rust modules on two nodes of three).
+- **The fork's CI steps**: fmt, clippy with warnings denied, the doc tests, the release build and the workspace's 1,562 tests pass. The simulator runs 20,000 seeds with faults and 5,000 with held links, none failing.
+- **Found on the way**, besides the destination command above: a harness race. JavaNode closed its archive while the Rust module beside it could still be terminating, and that module then ended as failed, its archive gone. It failed 1 run in 10 of the mixed quorum-loss scenario, on 1.53.3 as on 1.54.2. JavaNode now waits for the module first, as a Java node closes its module before its archive: 20 runs out of 20 since.
+
+Not rerun on 1.54.2: the Jepsen suite (its Java side pinned to 1.53.3) and the measurements of §6, `consensus.md`, `client.md` and the archive's design. The fork's GitHub workflow (Valgrind, the sanitizers, macOS) runs once the port is pushed.

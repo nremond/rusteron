@@ -1,7 +1,7 @@
 rusteron-archive-core
 
 This crate re-implements, in Rust, parts of Aeron Archive
-(https://github.com/aeron-io/aeron), version 1.53.3: its catalog and
+(https://github.com/aeron-io/aeron), version 1.54.2: its catalog and
 segment file formats and its server's behaviour, from Aeron's Java sources:
 
     Copyright 2014-2025 Real Logic Limited.

@@ -1,5 +1,5 @@
 //! Aeron Cluster's pieces as sans-IO state machines, wire- and
-//! on-disk-compatible with Aeron 1.53.3: no clock, no randomness, no I/O.
+//! on-disk-compatible with Aeron 1.54.2: no clock, no randomness, no I/O.
 //! A shell (`rusteron-cluster`) drives them on Aeron's C client; a simulator
 //! can drive them in virtual time.
 //!

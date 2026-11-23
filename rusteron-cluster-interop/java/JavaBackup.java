@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Java's ClusterBackup 1.53.3 with an archive of its own, on an external media
+ * Java's ClusterBackup 1.54.2 with an archive of its own, on an external media
  * driver, beside a cluster of {@link JavaNode}s: the oracle Rust's
  * {@code cluster_backup} is compared with. It takes the slot of node
  * {@code SLOT}'s ports: its archive's control channel, the consensus endpoint

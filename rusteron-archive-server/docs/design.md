@@ -1,6 +1,6 @@
 # Aeron Archive in Rust: the server, the cluster's part
 
-Aeron Archive's server re-implemented in Rust, wire- and on-disk-compatible with Java Aeron 1.53.3, as a sans-IO state machine driven by a shell on Aeron's C client: M2 of the plan in `rusteron-cluster/docs/design.md`, which this document follows.
+Aeron Archive's server re-implemented in Rust, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23, which the dated results below were measured on), as a sans-IO state machine driven by a shell on Aeron's C client: M2 of the plan in `rusteron-cluster/docs/design.md`, which this document follows.
 
 | | |
 |---|---|
@@ -14,7 +14,7 @@ Aeron Archive's server re-implemented in Rust, wire- and on-disk-compatible with
 
 Aeron Cluster needs an archive beside each node: the consensus module records the log into it, replays it on recovery, takes and loads snapshots through it, and catches up a lagging follower by replicating the leader's recording into it. Aeron C has the archive's client only; its server, about 20,000 lines, is Java's. With M1's service container in Rust, the archive and the consensus module were the two Java pieces left in a node. The archive comes first because a Java consensus module can test it: it is a separate process speaking a documented protocol, and Java's archive is there to compare with at every step.
 
-It keeps the plan's three decisions: sans-IO (the conductor takes events and time and returns actions), wire and on-disk compatibility with 1.53.3 (a Rust archive replaces Java's under a Java consensus module, Java's tools read its files, either side replicates from the other), and Java as the oracle.
+It keeps the plan's three decisions: sans-IO (the conductor takes events and time and returns actions), wire and on-disk compatibility with 1.54.2 (a Rust archive replaces Java's under a Java consensus module, Java's tools read its files, either side replicates from the other), and Java as the oracle.
 
 ## 2. The contract
 
@@ -77,7 +77,7 @@ Out: an authenticator and its challenge, response-channel control mode, checksum
 
 **Against Java's client** (`interop.sh`): Java's `AeronArchive` drives the Rust archive: start, list, a duplicate refused, stop, extend over 16 terms, stop by identity, an unknown recording; replays whole, from a position, bounded by a counter, and following a live recording, the messages and their checksums checked; truncate and purge; the archive killed (-9) mid-recording and restarted, the stop position recovered, the recording replayed whole; replication of a stopped recording and of one still recording, from a Java and from a Rust source, the copies replayed and compared; Java's `ArchiveTool describe` and `verify` after each stop. `interop.sh java` runs the same against Java's archive, which then replicates from a Rust one.
 
-**Aeron's own tests** (`aeron-tests/run.sh`): Aeron 1.53.3's C archive-client tests (`aeron_archive_test`) launch Java's `ArchivingMediaDriver` through `java`; a stand-in (`java.in`) starts Aeron's C media driver and `aeron_archive` instead, the `-D` properties mapped. 58 of the 74 cases pass; the 16 others use an authenticator rejecting null credentials (2), response channels and replay tokens (9), segment detach, attach and purge (3), channel update (1), listing recording subscriptions (1).
+**Aeron's own tests** (`aeron-tests/run.sh`): Aeron 1.54.2's C archive-client tests (`aeron_archive_test`) launch Java's `ArchivingMediaDriver` through `java`; a stand-in (`java.in`) starts Aeron's C media driver and `aeron_archive` instead, the `-D` properties mapped. 61 of the 80 cases pass (58 of 74 on 1.53.3); the 19 others use an authenticator rejecting null credentials (2, whose test binary crashes when the connect succeeds), response channels and replay tokens (12), segment detach, attach and purge (3), channel update (1), listing recording subscriptions (1).
 
 **Clusters on it.** rusteron's interop scenarios (`rusteron-cluster-interop/scripts/differential.sh`, `ARCHIVE=rust`): Java 1.53.3 consensus modules started without their archive, `aeron_archive` beside each node on its driver; the Rust and the Java service on one log, traces and snapshots compared as in M1. Each run then stops the archives with SIGTERM, checks they logged no warning, and runs Java's `ArchiveTool verify -a` on every node's archive (every segment file). `ARCHIVE=rust repeat.sh 10` passed all six scenarios ten times in a row, 60 runs in 11 minutes, on Linux on 2026-10-29, and once more with the verification added. An application's parity check: its Rust and Java engines on one log, each node's two archives in Rust (the cluster's, and the event log's), the workload, snapshots compared, the leader's node killed (-9) with its archives, a new leader, the node restarted and caught up, compared again.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs NODES Java Aeron Cluster 1.53.3 nodes, each on its own C media driver
+# Runs NODES Java Aeron Cluster 1.54.2 nodes, each on its own C media driver
 # from rusteron-media-driver, with the Java echo service, then an echo client
 # on a C driver of its own. Exits 0 when every echo came back in order.
 #
@@ -13,7 +13,7 @@ NODES=${1:-1}
 COUNT=${2:-1000}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 REPO=$(cd "$HERE/.." && pwd)
-JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 JAVA=${JAVA:-java}
 PORT_BASE=${PORT_BASE:-22000}
 JVM_FLAGS=(--add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/java.util.zip=ALL-UNNAMED

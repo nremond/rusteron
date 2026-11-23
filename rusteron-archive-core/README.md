@@ -1,6 +1,6 @@
 # rusteron-archive-core
 
-Aeron Archive 1.53.3's server as sans-IO state machines: no clock, no
+Aeron Archive 1.54.2's server as sans-IO state machines: no clock, no
 randomness, no I/O. Wire- and on-disk-compatible with Java's.
 
 - `catalog`: `archive.catalog`, held as an image of the file and the ranges

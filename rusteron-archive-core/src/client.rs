@@ -28,7 +28,7 @@ use rusteron_archive_codecs::archive::{
     stop_replication_request_codec as stop_replication, truncate_recording_request_codec as truncate,
 };
 
-/// The protocol version Aeron 1.53.3's client sends.
+/// The protocol version Aeron 1.54.2's client sends.
 pub const VERSION: i32 = 0x01_0C_00;
 
 macro_rules! encode {

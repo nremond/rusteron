@@ -43,7 +43,7 @@ import java.util.zip.CRC32;
  * non-zero on the first difference.
  *
  * <pre>
- * java -cp aeron-all-1.53.3.jar:. io.aeron.archive.ArchiveInterop AERON_DIR ARCHIVE_ID [MODE ...]
+ * java -cp aeron-all-1.54.2.jar:. io.aeron.archive.ArchiveInterop AERON_DIR ARCHIVE_ID [MODE ...]
  * </pre>
  *
  * <ul>

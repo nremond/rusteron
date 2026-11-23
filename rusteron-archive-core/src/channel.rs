@@ -1,4 +1,4 @@
-//! Channel URIs as Aeron 1.53.3's Java client parses and rebuilds them
+//! Channel URIs as Aeron 1.54.2's Java client parses and rebuilds them
 //! (`ChannelUri`, `ChannelUriStringBuilder`), for what the archive does with
 //! a channel a client names:
 //!

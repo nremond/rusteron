@@ -1,4 +1,4 @@
-//! The archive's mark file, `archive-mark.dat`, as Aeron Archive 1.53.3
+//! The archive's mark file, `archive-mark.dat`, as Aeron Archive 1.54.2
 //! writes it (`ArchiveMarkFile`): an SBE message header and the archive's
 //! header (schema 100 version 2) in the first 8 KiB, the distinct error log
 //! after them. Written with positional writes; Java's tools map the file and

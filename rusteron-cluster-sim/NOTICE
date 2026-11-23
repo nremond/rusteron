@@ -1,7 +1,7 @@
 rusteron-cluster-sim
 
 This crate re-implements, in Rust, parts of Aeron Cluster
-(https://github.com/aeron-io/aeron), version 1.53.3: its consensus module's
+(https://github.com/aeron-io/aeron), version 1.54.2: its consensus module's
 behaviour, from Aeron's Java sources:
 
     Copyright 2014-2025 Real Logic Limited.

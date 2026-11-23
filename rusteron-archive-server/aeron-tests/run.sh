@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs Aeron 1.53.3's own C archive client tests (aeron-archive/src/test/c/client) against the Rust archive:
+# Runs Aeron 1.54.2's own C archive client tests (aeron-archive/src/test/c/client) against the Rust archive:
 # builds them from rusteron's vendored Aeron with `java` pointed at java.in (Aeron's C media driver and
 # aeron_archive in place of Java's ArchivingMediaDriver), then runs them and lists what failed.
 #
@@ -11,13 +11,13 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
 AERON=$ROOT/rusteron-archive/aeron
 BUILD_DIR=${BUILD_DIR:-$HOME/aeron-ctest}
-JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 ARCHIVE_BIN=${ARCHIVE_BIN:-$ROOT/target/release/aeron_archive}
 mkdir -p "$BUILD_DIR"
 
 # The tests' build wants the jar Java's archive runs from; the stand-in does not use it.
 mkdir -p "$AERON/aeron-all/build/libs"
-[ -f "$AERON/aeron-all/build/libs/aeron-all-1.53.3.jar" ] || cp "$JAR" "$AERON/aeron-all/build/libs/"
+[ -f "$AERON/aeron-all/build/libs/aeron-all-1.54.2.jar" ] || cp "$JAR" "$AERON/aeron-all/build/libs/"
 
 REAL_JAVA=${JAVA_HOME:+$JAVA_HOME/bin/}java
 REAL_JAVA=$(command -v "$REAL_JAVA")

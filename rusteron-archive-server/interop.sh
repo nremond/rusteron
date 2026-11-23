@@ -11,7 +11,7 @@ set -euo pipefail
 
 WHICH=${1:-rust}
 HERE=$(cd "$(dirname "$0")" && pwd)
-JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 ARCHIVE_BIN=${ARCHIVE_BIN:-$HERE/../target/release/aeron_archive}
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-archive-interop.XXXXXX")
 AERON_DIR=$WORK/aeron

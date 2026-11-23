@@ -1,6 +1,6 @@
 # Aeron Cluster in Rust: the cluster client
 
-The fourth milestone of Aeron Cluster in Rust (see `design.md` for the service container and `consensus.md` for the consensus module): the client a gateway connects with, wire-compatible with Java Aeron 1.53.3's `AeronCluster`, as a sans-IO state machine driven by a shell on Aeron's C client.
+The fourth milestone of Aeron Cluster in Rust (see `design.md` for the service container and `consensus.md` for the consensus module): the client a gateway connects with, wire-compatible with Java Aeron 1.54.2's `AeronCluster` (1.53.3's until 2026-11-23), as a sans-IO state machine driven by a shell on Aeron's C client.
 
 | | |
 |---|---|
@@ -21,7 +21,7 @@ Java 1.53.3's `AeronCluster`, read from the source, kept as Java does it:
 - **The connect** (`AsyncConnect`): one deadline for the whole connect, `messageTimeoutNs` (5 s). The egress subscription first, then its port resolved for the response channel, with `rejoin=false` added to a UDP egress. With ingress endpoints, a publication to every member, all added before any is used, and the connect request sent through the first that connects; without them, one publication on the ingress channel as given, multicast or IPC. A follower's REDIRECT re-parses the members, the leader's publication kept if its endpoint is unchanged. A challenge is answered through a `CredentialsSupplier`. ERROR and AUTHENTICATION_REJECTED fail the connect, CLOSED is ignored, messages of other schemas skipped. The new leader timeout is twice the leader heartbeat timeout unless given.
 - **The connected client**: offers with the 32-byte session header pre-encoded, as one message or in parts; keepalives and the snapshot admin request, tried three times; the egress polled ten messages at most, each for this session only, through `EgressListener` or `ControlledEgressListener` (`on_message`, `on_session_event`, `on_new_leader`, `on_admin_response`). A message of another schema is an error, as Java's `EgressAdapter` throws without an extension.
 - **The states**: CONNECTED, AWAIT_NEW_LEADER, AWAIT_NEW_LEADER_CONNECTION, PENDING_CLOSE, CLOSED, with Java's transitions. An offer refused as NOT_CONNECTED or CLOSED, or the egress image going, awaits a new leader; a NewLeaderEvent switches the ingress to it, and only an offer that goes through counts it connected. MAX_POSITION_EXCEEDED, the cluster's CLOSED event, or no new leader within the timeout close the session.
-- **The context**: Java's settings and defaults (ingress and egress channels, streams 101 and 102, endpoints, message timeout, new leader timeout, client name, exclusive ingress), and `conclude()`'s checks. The client says it is `version=1.53.3 commit=rusteron-cluster-core-<version>`.
+- **The context**: Java's settings and defaults (ingress and egress channels, streams 101 and 102, endpoints, message timeout, new leader timeout, client name, exclusive ingress), and `conclude()`'s checks. The client says it is `version=1.54.2 commit=rusteron-cluster-core-<version>`.
 
 Out of scope: `tryClaim` (offers copy), the extension listeners for other schemas, Java's agent-invoker settings (the shell has its own, §3), `isDirectAssemblers`, a cluster backup's client side (Java's `ClusterBackup` covers it, `consensus.md` §5).
 

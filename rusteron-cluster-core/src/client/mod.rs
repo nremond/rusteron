@@ -1,4 +1,4 @@
-//! Aeron Cluster's client, `AeronCluster` of Aeron 1.53.3, as sans-IO state
+//! Aeron Cluster's client, `AeronCluster` of Aeron 1.54.2, as sans-IO state
 //! machines: [`Connect`] opens a session (Java's `AsyncConnect`), and
 //! [`Client`] holds it, sending on the leader's ingress and reading the
 //! session's egress. They reach Aeron through [`ClientPorts`], which a shell
@@ -339,7 +339,7 @@ pub(crate) fn close_all(members: &mut BTreeMap<i32, MemberIngress>, ports: &mut 
 /// What the client says of itself: Java's `name=... version=... commit=...`.
 pub fn client_info(client_name: &str) -> String {
     format!(
-        "name={client_name} version=1.53.3 commit=rusteron-cluster-core-{}",
+        "name={client_name} version=1.54.2 commit=rusteron-cluster-core-{}",
         env!("CARGO_PKG_VERSION")
     )
 }

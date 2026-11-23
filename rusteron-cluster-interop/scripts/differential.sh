@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The Rust service container beside Java's on one log: a Java Aeron Cluster
-# 1.53.3 consensus module and archive, the Rust test service as service 0,
+# 1.54.2 consensus module and archive, the Rust test service as service 0,
 # Java's twin of it as service 1 (answering no client), each node on its own
 # C media driver. A client sends messages, ClusterTool takes a snapshot, the
 # client sends more, ClusterTool shuts the cluster down. Passes when every
@@ -37,7 +37,7 @@ NODES=${1:-1}
 COUNT=${2:-1000}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 REPO=$(cd "$HERE/.." && pwd)
-JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 JAVA=${JAVA:-java}
 PORT_BASE=${PORT_BASE:-22000}
 JVM_FLAGS=(--add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/java.util.zip=ALL-UNNAMED

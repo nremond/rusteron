@@ -44,7 +44,7 @@ import java.util.concurrent.locks.LockSupport;
 import static io.aeron.Aeron.NULL_VALUE;
 
 /**
- * One node of a Java Aeron Cluster 1.53.3 on an external media driver (the C
+ * One node of a Java Aeron Cluster 1.54.2 on an external media driver (the C
  * driver from rusteron-media-driver): an archive, a consensus module, and the
  * Java services asked for. Services that are not Java (the Rust container) are
  * counted in {@code serviceCount} but started by someone else.

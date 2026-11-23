@@ -1,7 +1,7 @@
 rusteron-cluster-codecs
 
 This crate contains code generated from the SBE message schemas of Aeron
-(https://github.com/aeron-io/aeron), version 1.53.3, which are included
+(https://github.com/aeron-io/aeron), version 1.54.2, which are included
 unmodified in schemas/:
 
     Copyright 2014-2025 Real Logic Limited.

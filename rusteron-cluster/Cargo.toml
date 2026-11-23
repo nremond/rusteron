@@ -5,7 +5,7 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/nremond/rusteron"
 readme = "README.md"
-description = "Aeron Cluster's clustered service container on Aeron's C client: runs a Rust service against Aeron Cluster's consensus module, wire-compatible with Aeron 1.53.3."
+description = "Aeron Cluster's clustered service container on Aeron's C client: runs a Rust service against Aeron Cluster's consensus module, wire-compatible with Aeron 1.54.2."
 keywords = ["aeron", "aeron-cluster", "consensus", "low-latency"]
 categories = ["network-programming"]
 

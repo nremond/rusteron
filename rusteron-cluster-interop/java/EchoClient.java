@@ -25,7 +25,7 @@ import org.agrona.concurrent.IdleStrategy;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A Java Aeron Cluster 1.53.3 client on an external media driver: sends COUNT
+ * A Java Aeron Cluster 1.54.2 client on an external media driver: sends COUNT
  * messages, each its sequence number, and waits for each echo in order.
  * Prints {@code OK} and exits 0 when all came back, exits 1 otherwise.
  * FIRST, if given, is sent once before them: a command for the service, not echoed.

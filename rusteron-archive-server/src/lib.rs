@@ -1,5 +1,5 @@
 //! Aeron Archive's server on Aeron's C client, wire- and on-disk-compatible
-//! with Aeron 1.53.3: the archive's conductor ([`rusteron_archive_core`])
+//! with Aeron 1.54.2: the archive's conductor ([`rusteron_archive_core`])
 //! driven on one thread, as Java's SHARED mode, the client's conductor run
 //! on that thread too.
 //!
@@ -1713,7 +1713,7 @@ mod tests {
     use super::*;
     use rusteron_archive_core::catalog::Descriptor;
 
-    /// Aeron 1.53.3's recovery fixture whose last fragment a crash cut short
+    /// Aeron 1.54.2's recovery fixture whose last fragment a crash cut short
     /// across a page (`rusteron-archive-core/java/.../CatalogFixtures.java`).
     fn fixture(file: &str) -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR"))

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs Aeron 1.53.3's own cluster system tests with rusteron's consensus module in place of Java's on every
+# Runs Aeron 1.54.2's own cluster system tests with rusteron's consensus module in place of Java's on every
 # node: a copy of rusteron's vendored Aeron with testnode.patch applied (TestNode starts the consensus_module
 # binary that AERON_TEST_RUST_CM names, and reads its counters from the node's media driver), run through
 # Gradle. Lists what passed and what failed, with the failure's first line.

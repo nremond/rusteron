@@ -1,4 +1,4 @@
-//! Aeron Archive 1.53.3's SBE codecs, generated for Rust by sbe-tool 1.40.2
+//! Aeron Archive 1.54.2's SBE codecs, generated for Rust by sbe-tool 1.42.0
 //! from the schemas in `schemas/` (see `regen.sh`).
 //!
 //! - [`archive`]: the archive protocol, schema 101 version 14: control

@@ -1,5 +1,5 @@
 //! The clustered service container as a state machine, wire-compatible with
-//! Aeron 1.53.3's `ClusteredServiceAgent`.
+//! Aeron 1.54.2's `ClusteredServiceAgent`.
 //!
 //! The container reads no clock, draws no random number and does no I/O.
 //! The shell that drives it feeds it time ([`Container::on_tick`]), what the

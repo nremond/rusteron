@@ -1,5 +1,5 @@
 //! Aeron Cluster's consensus module as a sans-IO state machine, wire- and
-//! on-disk-compatible with Aeron 1.53.3: no clock, no randomness, no I/O.
+//! on-disk-compatible with Aeron 1.54.2: no clock, no randomness, no I/O.
 //! A shell (`rusteron-cluster`) drives it on Aeron's C client; a simulator
 //! can drive it in virtual time.
 //!

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rust's cluster backup beside Java's ClusterBackup 1.53.3 on one cluster: three JavaNodes, each on its own C
+# Rust's cluster backup beside Java's ClusterBackup 1.54.2 on one cluster: three JavaNodes, each on its own C
 # media driver with Java's echo service, and Java's consensus modules or Rust's. Java's backup (java/JavaBackup.java)
 # runs on a Java archive of its own, Rust's (cluster_backup) on the Rust archive, each on its own C driver, both
 # copying the log from the members' archives (SOURCE, default LEADER).
@@ -21,7 +21,7 @@ COUNT=${1:-1000}
 NODES=3
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 REPO=$(cd "$HERE/.." && pwd)
-JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 JAVA=${JAVA:-java}
 PORT_BASE=${PORT_BASE:-23000}
 JVM_FLAGS=(--add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/java.util.zip=ALL-UNNAMED

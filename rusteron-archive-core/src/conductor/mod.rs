@@ -1,5 +1,5 @@
 //! The archive's conductor as a state machine, wire-compatible with Aeron
-//! Archive 1.53.3's `ArchiveConductor` in its SHARED mode (one thread):
+//! Archive 1.54.2's `ArchiveConductor` in its SHARED mode (one thread):
 //! control sessions, the recordings they start, stop, list, replay,
 //! truncate and purge.
 //!

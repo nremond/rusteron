@@ -64,8 +64,8 @@ import static io.aeron.cluster.ConsensusModule.Configuration.SERVICE_ID;
  * </ul>
  *
  * <pre>
- * javac -cp aeron-all-1.53.3.jar -d out java/io/aeron/cluster/ConsensusFixtures.java
- * java -cp out:aeron-all-1.53.3.jar io.aeron.cluster.ConsensusFixtures tests/fixtures
+ * javac -cp aeron-all-1.54.2.jar -d out java/io/aeron/cluster/ConsensusFixtures.java
+ * java -cp out:aeron-all-1.54.2.jar io.aeron.cluster.ConsensusFixtures tests/fixtures
  * </pre>
  */
 public final class ConsensusFixtures

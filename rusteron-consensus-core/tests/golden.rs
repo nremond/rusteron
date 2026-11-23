@@ -1,5 +1,5 @@
 //! What backups and standbys send a member, and its answers, against bytes
-//! Aeron 1.53.3's Java codecs wrote (`rusteron-cluster-codecs/java/GoldenCodecs.java`):
+//! Aeron 1.54.2's Java codecs wrote (`rusteron-cluster-codecs/java/GoldenCodecs.java`):
 //! the module decodes Java's messages to the values Java set, and encodes its
 //! answers to Java's bytes. A message cut short anywhere is refused, never
 //! read past its end.

@@ -1,4 +1,4 @@
-//! The segment files a recording is written to, as Aeron Archive 1.53.3
+//! The segment files a recording is written to, as Aeron Archive 1.54.2
 //! writes them (`RecordingWriter.java`, `Catalog.java`):
 //!
 //! - one file a segment, `<recordingId>-<basePosition>.rec`, the full

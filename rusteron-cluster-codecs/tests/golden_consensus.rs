@@ -1,4 +1,4 @@
-//! The consensus module's messages against bytes written by Aeron 1.53.3's
+//! The consensus module's messages against bytes written by Aeron 1.54.2's
 //! Java codecs (`java/GoldenCodecs.java`): what it exchanges with clients,
 //! with the other members, with services and ClusterTool, and keeps in its
 //! snapshot. Each encodes to Java's bytes with the values Java set, and

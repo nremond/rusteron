@@ -1,5 +1,5 @@
 //! What a client sends the cluster, and what it reads back on its egress,
-//! as Aeron 1.53.3's `AeronCluster` encodes and decodes it. Every length is
+//! as Aeron 1.54.2's `AeronCluster` encodes and decodes it. Every length is
 //! checked before a field is read: the generated readers check nothing but
 //! the buffer's length, and panic when it is too short.
 

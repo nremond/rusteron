@@ -388,7 +388,7 @@ fn a_connect_goes_to_the_first_member_to_connect_and_concludes_on_ok() {
     let text = String::from_utf8_lossy(request);
     assert!(text.contains(RESPONSE), "{text}");
     assert!(
-        text.contains("name= version=1.53.3 commit=rusteron-cluster-core-"),
+        text.contains("name= version=1.54.2 commit=rusteron-cluster-core-"),
         "{text}"
     );
     assert_eq!(

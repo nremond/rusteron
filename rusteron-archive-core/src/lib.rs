@@ -1,5 +1,5 @@
 //! Aeron Archive's server as sans-IO state machines, wire- and
-//! on-disk-compatible with Aeron 1.53.3: no clock, no randomness, no I/O. A
+//! on-disk-compatible with Aeron 1.54.2: no clock, no randomness, no I/O. A
 //! shell (`rusteron-archive-server`) drives them on Aeron's C client and the
 //! file system.
 //!

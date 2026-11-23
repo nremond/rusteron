@@ -25,7 +25,7 @@ import java.io.File;
 import java.nio.MappedByteBuffer;
 
 /**
- * What Java sees of a running Rust container's mark file, with Aeron 1.53.3's
+ * What Java sees of a running Rust container's mark file, with Aeron 1.54.2's
  * own classes:
  * <ol>
  *     <li>{@link ClusterMarkFile} opens it: a container, of the service and

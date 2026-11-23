@@ -1,4 +1,4 @@
-//! The Rust codecs against bytes written by Aeron 1.53.3's Java codecs
+//! The Rust codecs against bytes written by Aeron 1.54.2's Java codecs
 //! (`java/GoldenCodecs.java`, which writes `tests/fixtures`): each message
 //! decodes to the values Java set, and encodes back to the same bytes. The
 //! requests are a client's, which the archive server decodes; the responses,
