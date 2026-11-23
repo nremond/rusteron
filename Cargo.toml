@@ -11,6 +11,7 @@ members = [
     "rusteron-cluster-codecs",
     "rusteron-cluster-core",
     "rusteron-consensus-core",
+    "rusteron-cluster",
 ]
 exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
 resolver = "2"
