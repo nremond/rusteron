@@ -23,6 +23,7 @@ pub fn marker(
     mark: SnapshotMark,
     log_position: i64,
     leadership_term_id: i64,
+    term_base_log_position: i64,
     time_unit: ClusterTimeUnit,
     app_version: i32,
 ) -> Vec<u8> {
@@ -34,7 +35,8 @@ pub fn marker(
             .index(0)
             .mark(mark)
             .time_unit(time_unit)
-            .app_version(app_version);
+            .app_version(app_version)
+            .term_base_log_position(term_base_log_position);
     })
 }
 
@@ -42,6 +44,8 @@ pub fn marker(
 pub struct State<'a, S> {
     pub log_position: i64,
     pub leadership_term_id: i64,
+    /// Where the snapshot's term began (Java 1.54.1's markers carry it).
+    pub term_base_log_position: i64,
     pub time_unit: ClusterTimeUnit,
     pub app_version: i32,
     pub next_committed_session_id: i64,
@@ -120,6 +124,7 @@ pub fn take<'a, S: Iterator<Item = &'a ClusterSession>>(state: State<'a, S>) -> 
         SnapshotMark::BEGIN,
         state.log_position,
         state.leadership_term_id,
+        state.term_base_log_position,
         state.time_unit,
         state.app_version,
     )];
@@ -174,6 +179,7 @@ pub fn take<'a, S: Iterator<Item = &'a ClusterSession>>(state: State<'a, S>) -> 
         SnapshotMark::END,
         state.log_position,
         state.leadership_term_id,
+        state.term_base_log_position,
         state.time_unit,
         state.app_version,
     ));
@@ -340,6 +346,7 @@ mod tests {
         let (messages, errors) = take(State {
             log_position: 4_096,
             leadership_term_id: 2,
+            term_base_log_position: 1_024,
             time_unit: ClusterTimeUnit::MILLIS,
             app_version: 1,
             next_committed_session_id: 9,
@@ -378,7 +385,7 @@ mod tests {
     #[test]
     fn a_tracker_before_any_service_message_reads_back_its_first_id() {
         let mut loader = Loader::default();
-        let begin = marker(SnapshotMark::BEGIN, 0, 0, ClusterTimeUnit::NANOS, 1);
+        let begin = marker(SnapshotMark::BEGIN, 0, 0, 0, ClusterTimeUnit::NANOS, 1);
         loader.on_message(&begin).unwrap();
         let state = module_state(3, i64::MIN + 1, i64::MIN, 0);
         assert_eq!(

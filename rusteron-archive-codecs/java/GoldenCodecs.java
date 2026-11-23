@@ -25,7 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Writes, with Aeron 1.53.3's own Java codecs, every message the Rust archive
+ * Writes, with Aeron 1.54.2's own Java codecs, every message the Rust archive
  * server reads or writes, as hex: one file a message in the directory given.
  * Requests (a client's) are what the server decodes; responses, signals, the
  * catalog's structures and the mark file's header are what it encodes.
@@ -33,7 +33,7 @@ import java.nio.file.Path;
  * here, encodes them again and compares the bytes.
  *
  * <pre>
- * java -cp aeron-all-1.53.3.jar GoldenCodecs.java tests/fixtures
+ * java -cp aeron-all-1.54.2.jar GoldenCodecs.java tests/fixtures
  * </pre>
  *
  * The values are arbitrary but distinct, so a field read from the wrong

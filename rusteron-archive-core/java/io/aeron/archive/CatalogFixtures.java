@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
 
 /**
  * Writes the fixtures of rusteron-archive-core's catalog tests with Aeron
- * 1.53.3's own {@code Catalog}, which is package-private: hence this package.
+ * 1.54.2's own {@code Catalog}, which is package-private: hence this package.
  *
  * <ul>
  * <li>{@code catalog/archive.catalog}: a catalog of 4 KiB grown by the
@@ -62,8 +62,8 @@ import java.util.regex.Pattern;
  * </ul>
  *
  * <pre>
- * javac -cp aeron-all-1.53.3.jar -d out java/io/aeron/archive/CatalogFixtures.java
- * java -cp out:aeron-all-1.53.3.jar io.aeron.archive.CatalogFixtures tests/fixtures
+ * javac -cp aeron-all-1.54.2.jar -d out java/io/aeron/archive/CatalogFixtures.java
+ * java -cp out:aeron-all-1.54.2.jar io.aeron.archive.CatalogFixtures tests/fixtures
  * </pre>
  */
 public final class CatalogFixtures

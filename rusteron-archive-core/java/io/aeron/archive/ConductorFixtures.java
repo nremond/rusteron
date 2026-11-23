@@ -37,7 +37,7 @@ import static io.aeron.CommonContext.*;
 
 /**
  * Writes the fixtures of rusteron-archive-core's conductor tests with Aeron
- * 1.53.3's own code, from this package for what is package-private:
+ * 1.54.2's own code, from this package for what is package-private:
  *
  * <ul>
  * <li>{@code channels.txt}: for each channel a client may name, what the
@@ -204,7 +204,7 @@ public final class ConductorFixtures
                 aeron, buffer, Long.MIN_VALUE, 12345678901L, -5, 7, "aeron:udp?endpoint=localhost:20121|alias=" +
                 "x".repeat(400), "127.0.0.1:" + "9".repeat(120)));
             final long registrationId = ControlSessionCounter.allocate(aeron, buffer, 42, 7000,
-                "name=test version=1.53.3 commit=377943bcb8 sourceIdentity=aeron:ipc sessionId=-321");
+                "name=test version=1.54.2 commit=481d4271ad sourceIdentity=aeron:ipc sessionId=-321");
             Counter session;
             while (null == (session = aeron.getCounter(registrationId)))
             {

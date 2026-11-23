@@ -52,9 +52,9 @@ pub const BACKUP_SNAPSHOT_RETRIEVE_COUNT_TYPE_ID: i32 = 240;
 pub const RECORDING_POSITION_TYPE_ID: i32 = 100;
 
 /// The version the module's errors counter names, Aeron's.
-pub const VERSION: &str = "1.53.3";
+pub const VERSION: &str = "1.54.2";
 /// The commit it names.
-pub const GIT_SHA: &str = "377943bcb8";
+pub const GIT_SHA: &str = "481d4271ad";
 /// A counter's label suffix naming its cluster.
 const CLUSTER_ID_LABEL_SUFFIX: &str = " - clusterId=";
 

@@ -1,4 +1,4 @@
-212	03000000	Cluster Errors - clusterId=3 version=1.53.3 commit=377943bcb8
+212	03000000	Cluster Errors - clusterId=3 version=1.54.2 commit=481d4271ad
 200	03000000	Consensus Module state - clusterId=3
 207	03000000	Cluster election state - clusterId=3
 238	03000000	Cluster election count - clusterId=3

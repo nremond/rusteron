@@ -37,7 +37,7 @@ fn header(bytes: &[u8], template_id: u16) -> MessageHeaderDecoder<ReadBuf<'_>> {
     let header = MessageHeaderDecoder::default().wrap(ReadBuf::new(bytes), 0);
     assert_eq!(header.template_id(), template_id);
     assert_eq!(header.schema_id(), 111);
-    assert_eq!(header.version(), 17);
+    assert_eq!(header.version(), 18);
     header
 }
 
@@ -295,6 +295,7 @@ fn cluster_action_request() {
     assert_eq!(d.timestamp(), 555);
     assert_eq!(d.action(), ClusterAction::SNAPSHOT);
     assert_eq!(d.flags(), Some(0));
+    assert_eq!(d.term_base_log_position(), Some(8_192));
 
     let mut out = vec![0; bytes.len()];
     let mut e = ClusterActionRequestEncoder::default()
@@ -306,7 +307,8 @@ fn cluster_action_request() {
         .log_position(16_384)
         .timestamp(555)
         .action(ClusterAction::SNAPSHOT)
-        .flags(0);
+        .flags(0)
+        .term_base_log_position(8_192);
     assert_eq!(out, bytes);
 }
 
@@ -382,6 +384,7 @@ fn snapshot_marker() {
     assert_eq!(d.mark(), SnapshotMark::BEGIN);
     assert_eq!(d.time_unit(), ClusterTimeUnit::NANOS);
     assert_eq!(d.app_version(), Some(version(0, 0, 1)));
+    assert_eq!(d.term_base_log_position(), Some(24_576));
 
     let mut out = vec![0; bytes.len()];
     let mut e = SnapshotMarkerEncoder::default()
@@ -395,7 +398,8 @@ fn snapshot_marker() {
         .index(0)
         .mark(SnapshotMark::BEGIN)
         .time_unit(ClusterTimeUnit::NANOS)
-        .app_version(version(0, 0, 1));
+        .app_version(version(0, 0, 1))
+        .term_base_log_position(24_576);
     assert_eq!(out, bytes);
 }
 

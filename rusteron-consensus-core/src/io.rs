@@ -58,6 +58,11 @@ pub mod offer_result {
 pub trait Ports {
     /// The log publication's position, 0 without one.
     fn log_position(&self) -> i64;
+    /// The log publication's term length, 0 without one or if not known:
+    /// where a message lands when it does not fit the rest of a term.
+    fn log_term_length(&self) -> i32 {
+        0
+    }
     /// Offers a message on the log publication, in parts as Aeron's
     /// vectored offer takes them: the new position, or Aeron's negative
     /// result ([`offer_result`]).

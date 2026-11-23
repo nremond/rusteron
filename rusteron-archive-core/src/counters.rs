@@ -20,8 +20,8 @@ pub const ARCHIVE_REPLAY_SESSION_COUNT_TYPE_ID: i32 = 112;
 pub const ARCHIVE_CONTROL_SESSION_TYPE_ID: i32 = 113;
 
 /// The version an archive's errors counter names.
-pub const ARCHIVE_VERSION: &str = "1.53.3";
-pub const ARCHIVE_GIT_SHA: &str = "377943bcb8";
+pub const ARCHIVE_VERSION: &str = "1.54.2";
+pub const ARCHIVE_GIT_SHA: &str = "481d4271ad";
 
 const ARCHIVE_ID_LABEL_SUFFIX: &str = " - archiveId=";
 /// Aeron's longest key and label.

@@ -42,7 +42,7 @@ fn header(bytes: &[u8], template_id: u16) -> MessageHeaderDecoder<ReadBuf<'_>> {
     let header = MessageHeaderDecoder::default().wrap(ReadBuf::new(bytes), 0);
     assert_eq!(header.template_id(), template_id);
     assert_eq!(header.schema_id(), 111);
-    assert_eq!(header.version(), 17);
+    assert_eq!(header.version(), 18);
     header
 }
 

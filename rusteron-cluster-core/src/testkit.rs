@@ -6,8 +6,9 @@
 use rusteron_cluster_codecs::cluster::{
     ReadBuf, WriteBuf, boolean_type::BooleanType, cancel_timer_codec::CancelTimerDecoder,
     close_reason::CloseReason as WireCloseReason, close_session_codec::CloseSessionDecoder,
-    cluster_action::ClusterAction, cluster_action_request_codec::ClusterActionRequestEncoder,
-    cluster_time_unit::ClusterTimeUnit, join_log_codec::JoinLogEncoder, message_header_codec,
+    cluster_action::ClusterAction, cluster_action_request_codec,
+    cluster_action_request_codec::ClusterActionRequestEncoder, cluster_time_unit::ClusterTimeUnit,
+    join_log_codec::JoinLogEncoder, message_header_codec,
     new_leadership_term_event_codec::NewLeadershipTermEventEncoder,
     request_service_ack_codec::RequestServiceAckEncoder, schedule_timer_codec::ScheduleTimerDecoder,
     service_ack_codec::ServiceAckDecoder, service_termination_position_codec::ServiceTerminationPositionEncoder,
@@ -205,7 +206,7 @@ pub mod log {
 
     /// A snapshot request at `log_position`: the position just after it.
     pub fn snapshot_request(leadership_term_id: i64, log_position: i64, timestamp: i64) -> Vec<u8> {
-        encode(HEADER + 32, |b| {
+        encode(SNAPSHOT_REQUEST_LENGTH, |b| {
             let mut e = ClusterActionRequestEncoder::default()
                 .wrap(WriteBuf::new(b), HEADER)
                 .header(0)
@@ -215,12 +216,13 @@ pub mod log {
                 .log_position(log_position)
                 .timestamp(timestamp)
                 .action(ClusterAction::SNAPSHOT)
-                .flags(0);
+                .flags(0)
+                .term_base_log_position(0);
         })
     }
 
     /// The length of a snapshot request, to find its position before encoding it.
-    pub const SNAPSHOT_REQUEST_LENGTH: usize = HEADER + 32;
+    pub const SNAPSHOT_REQUEST_LENGTH: usize = HEADER + cluster_action_request_codec::SBE_BLOCK_LENGTH as usize;
 
     /// A new term at `log_position`: the position just after it.
     pub fn new_leadership_term(

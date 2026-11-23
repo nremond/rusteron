@@ -8,7 +8,7 @@ use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, sync_channel};
 
 use rusteron_cluster_codecs::cluster::{
     Decoder, WriteBuf, client_session_codec::ClientSessionDecoder, client_session_codec::ClientSessionEncoder,
-    cluster_time_unit::ClusterTimeUnit, message_header_codec, snapshot_mark::SnapshotMark,
+    cluster_time_unit::ClusterTimeUnit, message_header_codec, snapshot_mark::SnapshotMark, snapshot_marker_codec,
     snapshot_marker_codec::SnapshotMarkerDecoder, snapshot_marker_codec::SnapshotMarkerEncoder,
 };
 
@@ -235,15 +235,17 @@ pub(crate) fn time_unit(unit: ClusterTimeUnit) -> TimeUnit {
     }
 }
 
-/// A snapshot marker, as `SnapshotTaker.markSnapshot` writes it.
+/// A snapshot marker, as `SnapshotTaker.markSnapshot` writes it, with the
+/// snapshot's term base (Java 1.54.1; -1 when the log's action had none).
 pub(crate) fn marker(
     log_position: i64,
     leadership_term_id: i64,
+    term_base_log_position: i64,
     mark: SnapshotMark,
     time_unit: TimeUnit,
     app_version: i32,
 ) -> Vec<u8> {
-    let mut bytes = vec![0; HEADER + 40];
+    let mut bytes = vec![0; HEADER + snapshot_marker_codec::SBE_BLOCK_LENGTH as usize];
     let mut e = SnapshotMarkerEncoder::default()
         .wrap(WriteBuf::new(&mut bytes), HEADER)
         .header(0)
@@ -255,7 +257,8 @@ pub(crate) fn marker(
         .index(0)
         .mark(mark)
         .time_unit(cluster_time_unit(time_unit))
-        .app_version(app_version);
+        .app_version(app_version)
+        .term_base_log_position(term_base_log_position);
     bytes
 }
 
@@ -419,11 +422,11 @@ mod tests {
         let (sink, bytes) = vec_sink();
         let mut loader = Loader::new(sink);
         loader
-            .on_message(&marker(4_096, 3, SnapshotMark::BEGIN, TimeUnit::Nanos, 7))
+            .on_message(&marker(4_096, 3, 0, SnapshotMark::BEGIN, TimeUnit::Nanos, 7))
             .unwrap();
         loader.on_message(&client_session(&session)).unwrap();
         loader
-            .on_message(&marker(4_096, 3, SnapshotMark::END, TimeUnit::Nanos, 7))
+            .on_message(&marker(4_096, 3, 0, SnapshotMark::END, TimeUnit::Nanos, 7))
             .unwrap();
         assert!(loader.is_after_end());
         loader.on_message(b"service state").unwrap();
@@ -438,7 +441,7 @@ mod tests {
         let mut loader = Loader::new(sink);
         assert!(
             loader
-                .on_message(&marker(0, 0, SnapshotMark::END, TimeUnit::Millis, 0))
+                .on_message(&marker(0, 0, 0, SnapshotMark::END, TimeUnit::Millis, 0))
                 .is_err()
         );
         let session = ClientSession {

@@ -90,7 +90,7 @@ fn counters_are_keyed_and_labelled_as_by_java() {
             counters::control_session(
                 42,
                 7000,
-                "name=test version=1.53.3 commit=377943bcb8",
+                "name=test version=1.54.2 commit=481d4271ad",
                 "aeron:ipc",
                 -321,
             ),

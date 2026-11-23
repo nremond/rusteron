@@ -330,6 +330,13 @@ impl Ports for Node {
         self.log_publication.as_ref().map_or(0, |p| p.position())
     }
 
+    fn log_term_length(&self) -> i32 {
+        self.log_publication
+            .as_ref()
+            .and_then(|p| p.get_constants().ok())
+            .map_or(0, |c| c.term_buffer_length() as i32)
+    }
+
     fn offer_log(&mut self, parts: &[&[u8]]) -> i64 {
         match &self.log_publication {
             Some(p) => position_result(p.offer_parts(parts)),

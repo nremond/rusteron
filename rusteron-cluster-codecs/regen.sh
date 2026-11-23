@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Regenerates src/cluster, src/mark and src/node from schemas/ with sbe-tool 1.40.2, the
-# SBE version Aeron 1.53.3 generates its own codecs with. The output is
+# Regenerates src/cluster, src/mark and src/node from schemas/ with sbe-tool 1.42.0, the
+# SBE version Aeron 1.54.2 generates its own codecs with. The output is
 # checked in, so building the crate needs no Java.
 #
 #   ./regen.sh
@@ -9,8 +9,8 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-SBE_TOOL_JAR=${SBE_TOOL_JAR:-$HOME/.m2/repository/uk/co/real-logic/sbe-tool/1.40.2/sbe-tool-1.40.2.jar}
-AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+SBE_TOOL_JAR=${SBE_TOOL_JAR:-$HOME/.m2/repository/uk/co/real-logic/sbe-tool/1.42.0/sbe-tool-1.42.0.jar}
+AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-cluster-codecs.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 

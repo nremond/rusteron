@@ -1070,11 +1070,13 @@ impl<S: ClusteredService> Container<S> {
                 let (leadership_term_id, log_position, timestamp) =
                     (d.leadership_term_id(), d.log_position(), d.timestamp());
                 let flags = d.flags().unwrap_or(CLUSTER_ACTION_FLAGS_DEFAULT);
+                // Absent from a module before Java 1.54.1: null, as Java's service reads it.
+                let term_base_log_position = d.term_base_log_position().unwrap_or(NULL_VALUE);
                 self.shared.log_position = log_position;
                 self.shared.cluster_time = timestamp;
                 let take = flags == CLUSTER_ACTION_FLAGS_DEFAULT || flags & self.standby_snapshot_flags != 0;
                 if d.action() == ClusterAction::SNAPSHOT && take {
-                    self.begin_snapshot(log_position, leadership_term_id);
+                    self.begin_snapshot(log_position, leadership_term_id, term_base_log_position);
                     return Ok(PollAction::Break);
                 }
                 Ok(PollAction::Continue)
@@ -1118,7 +1120,7 @@ impl<S: ClusteredService> Container<S> {
 
     // ----- snapshots -----
 
-    fn begin_snapshot(&mut self, log_position: i64, leadership_term_id: i64) {
+    fn begin_snapshot(&mut self, log_position: i64, leadership_term_id: i64, term_base_log_position: i64) {
         let Some(time_unit) = self.shared.time_unit else {
             self.error(format!(
                 "snapshot at {log_position} requested before the log named its time unit"
@@ -1140,6 +1142,7 @@ impl<S: ClusteredService> Container<S> {
         preamble.push_back(snapshot::marker(
             log_position,
             leadership_term_id,
+            term_base_log_position,
             SnapshotMark::BEGIN,
             time_unit,
             app_version,
@@ -1150,6 +1153,7 @@ impl<S: ClusteredService> Container<S> {
         preamble.push_back(snapshot::marker(
             log_position,
             leadership_term_id,
+            term_base_log_position,
             SnapshotMark::END,
             time_unit,
             app_version,

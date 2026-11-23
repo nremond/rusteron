@@ -156,6 +156,15 @@ fn a_next_recording_id_behind_the_entries_is_refused() {
     );
 }
 
+/// A case where Java 1.54 reports a page straddle with no fragment there: no
+/// frame read from a page-aligned offset past the segment's start. Its
+/// `fragmentStraddlesPageBoundary(offset, 0)` is true at a page boundary and
+/// `isValidFragment` (1.54.0) calls a zero-length fragment invalid, so it
+/// asks to truncate; it stops where it would have, and "truncating" leaves
+/// the file as it was. This archive finds no straddle: one would keep it
+/// from starting without `--truncate-torn-fragments`.
+const JAVA_SPURIOUS_STRADDLE: &str = "empty-segment";
+
 #[test]
 fn the_recovered_stop_positions_are_javas() {
     let cases = fs::read_to_string(fixtures().join("recovery/cases.txt")).unwrap();
@@ -174,7 +183,10 @@ fn the_recovered_stop_positions_are_javas() {
         };
         match compute_stop_position(start, term, 64 * 1024, segment) {
             Ok(stop) => {
-                assert!(!straddled, "{name}: Java found the last fragment half written");
+                assert!(
+                    !straddled || name == JAVA_SPURIOUS_STRADDLE,
+                    "{name}: Java found the last fragment half written"
+                );
                 assert_eq!(stop, expected, "{name}");
             }
             Err(Recovery::PageStraddle { fragment_offset }) => {
@@ -201,6 +213,12 @@ fn a_torn_fragment_is_truncated_as_java_truncates_it() {
         let segment = 64 * 1024;
         let dir = fixtures().join("recovery").join(name);
         let bytes = fs::read(dir.join(file)).unwrap();
+        if name == JAVA_SPURIOUS_STRADDLE {
+            // Java's truncation of nothing: the file as it was, the stop where it was.
+            assert_eq!(bytes, fs::read(dir.join("truncated").join(file)).unwrap(), "{name}");
+            assert_eq!(f[5], f[7], "{name}");
+            continue;
+        }
         let Err(Recovery::PageStraddle { fragment_offset }) =
             compute_stop_position(start, term, segment, Some((base, bytes.as_slice())))
         else {

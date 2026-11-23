@@ -26,14 +26,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Writes, with Aeron 1.53.3's own Java codecs, every message the Rust service
+ * Writes, with Aeron 1.54.2's own Java codecs, every message the Rust service
  * container and consensus module read or write, header included, as hex: one
  * file a message in the directory given. tests/golden.rs and
  * tests/golden_consensus.rs decode each with the Rust codecs, check the values
  * set here, encode them again and compare the bytes.
  *
  * <pre>
- * java -cp aeron-all-1.53.3.jar GoldenCodecs.java tests/fixtures
+ * java -cp aeron-all-1.54.2.jar GoldenCodecs.java tests/fixtures
  * </pre>
  *
  * The values are arbitrary but distinct, so a field read from the wrong
@@ -137,7 +137,8 @@ public final class GoldenCodecs
             .logPosition(16_384)
             .timestamp(555)
             .action(ClusterAction.SNAPSHOT)
-            .flags(0);
+            .flags(0)
+            .termBaseLogPosition(8_192);
         write(dir, "cluster_action_request", action.encodedLength());
 
         final NewLeadershipTermEventEncoder newTerm = new NewLeadershipTermEventEncoder()
@@ -172,7 +173,8 @@ public final class GoldenCodecs
             .index(0)
             .mark(SnapshotMark.BEGIN)
             .timeUnit(ClusterTimeUnit.NANOS)
-            .appVersion(SemanticVersion.compose(0, 0, 1));
+            .appVersion(SemanticVersion.compose(0, 0, 1))
+            .termBaseLogPosition(24_576);
         write(dir, "snapshot_marker", marker.encodedLength());
 
         final ClientSessionEncoder session = new ClientSessionEncoder().wrapAndApplyHeader(BUFFER, 0, HEADER)

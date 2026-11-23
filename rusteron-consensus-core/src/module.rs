@@ -2267,9 +2267,31 @@ impl ConsensusModule {
     }
 
     fn append_action(&mut self, action: ClusterAction, flags: i32, ports: &mut impl Ports) -> Outcome<bool> {
-        let log_position = log::position_after(ports.log_position(), log::CLUSTER_ACTION_LENGTH);
-        let message = log::cluster_action(self.leadership_term_id, log_position, self.timestamp(), action, flags);
+        let log_position = log::position_after_in_term(
+            ports.log_position(),
+            ports.log_term_length(),
+            log::CLUSTER_ACTION_LENGTH,
+        );
+        let message = log::cluster_action(
+            self.leadership_term_id,
+            self.term_base_log_position(),
+            log_position,
+            self.timestamp(),
+            action,
+            flags,
+        );
         Ok(log::append(ports, &[&message])?.is_some())
+    }
+
+    /// Where this term began: its entry in the recording log, else the
+    /// recovery plan's last term's, as Java's `termBaseLogPosition()` has it
+    /// for a cluster action's and a snapshot's metadata (1.54.1).
+    fn term_base_log_position(&self) -> i64 {
+        self.recording_log
+            .find_term_entry(self.leadership_term_id)
+            .map(|e| e.term_base_log_position)
+            .or_else(|| self.recovery_plan.as_ref().map(|p| p.last_term_base_log_position))
+            .unwrap_or(NULL_VALUE)
     }
 
     fn check_cluster_control_toggle(&mut self, ports: &mut impl Ports) -> Outcome<usize> {
@@ -2405,6 +2427,7 @@ impl ConsensusModule {
                 let (messages, errors) = snapshot::take(snapshot::State {
                     log_position,
                     leadership_term_id: term,
+                    term_base_log_position: self.term_base_log_position(),
                     time_unit: self.config.time_unit.codec(),
                     app_version: self.config.app_version,
                     next_committed_session_id: self.sessions.next_committed_session_id(),

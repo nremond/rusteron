@@ -44,7 +44,7 @@ import static io.aeron.cluster.ConsensusModule.Configuration.SERVICE_ID;
 
 /**
  * Writes the fixtures of rusteron-cluster-core's consensus module file tests
- * with Aeron 1.53.3's own code: {@code RecordingLog.ensureCoherent} and
+ * with Aeron 1.54.2's own code: {@code RecordingLog.ensureCoherent} and
  * {@code removeEntry} are package-private, hence this package.
  *
  * <ul>

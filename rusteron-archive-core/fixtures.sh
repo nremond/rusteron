@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rewrites tests/fixtures with Aeron 1.53.3's own code:
+# Rewrites tests/fixtures with Aeron 1.54.2's own code:
 # - java/io/aeron/archive/CatalogFixtures.java: a catalog and the operations that made it, segment
 #   files with the stop position Java recovers, and an archive before and after ArchiveTool verify;
 # - java/io/aeron/archive/ConductorFixtures.java: what the archive makes of channels, and the counters
@@ -11,7 +11,7 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-archive-core.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 

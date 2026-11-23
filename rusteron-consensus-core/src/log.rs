@@ -57,6 +57,28 @@ pub fn position_after(position: i64, length: usize) -> i64 {
         )
 }
 
+/// As [`position_after`], on a log of `term_length`-byte terms: a message
+/// that does not fit in the rest of its term goes after a padding frame, at
+/// the start of the next, as an exclusive publication appends it (Java
+/// 1.54.1 takes the position from its claim). A `term_length` of 0, not
+/// known, is [`position_after`].
+pub fn position_after_in_term(position: i64, term_length: i32, length: usize) -> i64 {
+    let aligned = align(
+        i64::from(FRAME_HEADER_LENGTH) + length as i64,
+        i64::from(FRAME_ALIGNMENT),
+    );
+    if term_length <= 0 {
+        return position + aligned;
+    }
+    let term_length = i64::from(term_length);
+    let term_offset = position & (term_length - 1);
+    if term_offset + aligned > term_length {
+        position + (term_length - term_offset) + aligned
+    } else {
+        position + aligned
+    }
+}
+
 /// A client's or service's message: header, then the payload as given.
 pub fn session_message_header(leadership_term_id: i64, cluster_session_id: i64, timestamp: i64) -> Vec<u8> {
     use session_message_header_codec as c;
@@ -123,6 +145,7 @@ pub const CLUSTER_ACTION_LENGTH: usize = HEADER_LENGTH + cluster_action_request_
 
 pub fn cluster_action(
     leadership_term_id: i64,
+    term_base_log_position: i64,
     log_position: i64,
     timestamp: i64,
     action: ClusterAction,
@@ -134,7 +157,8 @@ pub fn cluster_action(
             .log_position(log_position)
             .timestamp(timestamp)
             .action(action)
-            .flags(flags);
+            .flags(flags)
+            .term_base_log_position(term_base_log_position);
     })
 }
 
@@ -299,6 +323,7 @@ mod tests {
         );
         let action = cluster_action(
             3,
+            0,
             position_after(1_024, CLUSTER_ACTION_LENGTH),
             5,
             ClusterAction::SNAPSHOT,
@@ -308,7 +333,7 @@ mod tests {
         let LogMessage::ClusterAction { log_position, .. } = decode(&action).unwrap() else {
             panic!("an action");
         };
-        assert_eq!(log_position, 1_024 + 96, "a 40-byte message takes a 96-byte frame");
+        assert_eq!(log_position, 1_024 + 96, "a 48-byte message takes a 96-byte frame");
         let term = new_leadership_term_event(4, 1_120, 6, 0, 1, -5, ClusterTimeUnit::MILLIS, 1);
         assert_eq!(term.len(), NEW_LEADERSHIP_TERM_EVENT_LENGTH);
         assert!(matches!(
@@ -338,5 +363,26 @@ mod tests {
         // Cut into the response channel: the principal after it is not read.
         assert!(decode(&open[..open.len() - 10]).is_err());
         assert!(decode(&open[..10]).is_err());
+    }
+
+    #[test]
+    fn an_action_that_does_not_fit_its_term_lands_after_the_padding() {
+        let term = 64 * 1024;
+        // Room for it: as without terms.
+        assert_eq!(position_after_in_term(1_024, term, CLUSTER_ACTION_LENGTH), 1_024 + 96);
+        // It ends the term exactly: still this term.
+        let end = i64::from(term) - 96;
+        assert_eq!(
+            position_after_in_term(end, term, CLUSTER_ACTION_LENGTH),
+            i64::from(term)
+        );
+        // 64 bytes left: a padding frame, then the action at the next term's start.
+        let late = 3 * i64::from(term) - 64;
+        assert_eq!(
+            position_after_in_term(late, term, CLUSTER_ACTION_LENGTH),
+            3 * i64::from(term) + 96
+        );
+        // The term length not known: as before.
+        assert_eq!(position_after_in_term(late, 0, CLUSTER_ACTION_LENGTH), late + 96);
     }
 }

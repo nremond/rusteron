@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rewrites tests/fixtures with Aeron 1.53.3's own code: java/io/aeron/cluster/ConsensusFixtures.java writes a
+# Rewrites tests/fixtures with Aeron 1.54.2's own code: java/io/aeron/cluster/ConsensusFixtures.java writes a
 # recording log and the operations that made it, recovery plans of real recordings on an embedded archive,
 # node state files, and the counters a consensus module allocates.
 #
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar}
+AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-cluster-core.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 
