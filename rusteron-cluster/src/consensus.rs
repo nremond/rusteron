@@ -1153,12 +1153,14 @@ impl ConsensusModuleNode {
                 Destination::Publication(a) => a.aeron_exclusive_publication_async_destination_poll(),
                 Destination::Subscription(a) => a.aeron_subscription_async_destination_poll(),
             };
+            // A finished poll marks the command released (the client freed it), so dropping
+            // the handle frees nothing natively. It must be dropped, not forgotten: it holds
+            // the publication or subscription, whose close waits for its last owner.
             match polled {
                 Ok(0) => self.destinations.push(d),
-                // The client freed the command as it completed: its handle is let go unclosed.
-                Ok(_) => std::mem::forget(d),
+                Ok(_) => drop(d),
                 Err(e) => {
-                    std::mem::forget(d);
+                    drop(d);
                     self.record_error(&format!("destination: {e}"));
                 }
             }
