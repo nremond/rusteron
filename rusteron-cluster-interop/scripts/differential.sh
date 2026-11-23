@@ -128,6 +128,8 @@ start_node() { # n
       --startup-canvass-timeout 5s --leader-heartbeat-timeout 1000ms --leader-heartbeat-interval 100ms \
       --election-timeout 500ms >>"$WORK/cm-$n.log" 2>&1 &
     cm_pid[n]=$!
+    # JavaNode keeps the archive up until this module has ended.
+    mkdir -p "$WORK/node$n" && echo "${cm_pid[n]}" >"$WORK/node$n/consensus-module.pid"
   fi
   "$RUST_NODE" "$WORK/aeron-$n" "$WORK/node$n/cluster" 0 "$WORK/node$n-service0.trace" >>"$WORK/rust-$n.log" 2>&1 &
   rust_pid[n]=$!

@@ -100,6 +100,8 @@ start_node() { # n
       --election-timeout 500ms >>"$WORK/cm-$n.log" 2>&1 &
     pids+=($!)
     node_pids[n]+=" $!"
+    # JavaNode keeps the archive up until this module has ended.
+    mkdir -p "$WORK/node$n" && echo "$!" >"$WORK/node$n/consensus-module.pid"
   fi
 }
 

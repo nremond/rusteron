@@ -35,6 +35,7 @@ import org.agrona.concurrent.status.CountersReader;
 
 import java.io.File;
 import java.nio.MappedByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -70,7 +71,9 @@ import static io.aeron.Aeron.NULL_VALUE;
  *
  * <p>With {@code -Dcluster.consensus.external=true}, the node starts no
  * consensus module: the Rust one runs beside it (from the scripts), and the
- * node ends when its Java services are terminated.
+ * node ends when its Java services are terminated, its archive closed only
+ * once that module has ended ({@code consensus-module.pid}, which the scripts
+ * write), as a Java node closes its consensus module before its archive.
  */
 public final class JavaNode
 {
@@ -185,8 +188,42 @@ public final class JavaNode
         barrier.await();
 
         containers.forEach(CloseHelper::quietClose);
+        if (externalConsensus && null != archive)
+        {
+            awaitExternalConsensusModule(dir);
+        }
         CloseHelper.quietCloseAll(consensusModule, archive);
         System.out.println("STOPPED node=" + nodeId);
+    }
+
+    /**
+     * Waits, 30 s at most, for the external consensus module whose pid the scripts wrote to
+     * {@code consensus-module.pid} to end: until then it may still need this node's archive, its termination waiting
+     * on the other members, and one whose local archive goes ends as failed, as Java's does.
+     *
+     * @param dir of the node.
+     */
+    static void awaitExternalConsensusModule(final File dir)
+    {
+        final File pidFile = new File(dir, "consensus-module.pid");
+        if (!pidFile.exists())
+        {
+            return;
+        }
+
+        try
+        {
+            final long pid = Long.parseLong(Files.readString(pidFile.toPath()).trim());
+            final ProcessHandle process = ProcessHandle.of(pid).orElse(null);
+            if (null != process)
+            {
+                process.onExit().get(30, TimeUnit.SECONDS);
+            }
+        }
+        catch (final Exception ex)
+        {
+            System.err.println("consensus module not awaited: " + ex);
+        }
     }
 
     /**
