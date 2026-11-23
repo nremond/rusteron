@@ -459,7 +459,6 @@ pub struct Conductor {
     /// Java's `recordingSubscriptionByKeyMap`: what a stop finds.
     by_key: HashMap<String, SubscriptionToken>,
     recordings: BTreeMap<i64, Recording>,
-    num_active_recordings: i32,
     /// Replays whose publication is being added, by its token.
     pending_replays: HashMap<SubscriptionToken, PendingReplay>,
     replays: BTreeMap<i64, ActiveReplay>,
@@ -505,7 +504,6 @@ impl Conductor {
             ref_counts: HashMap::new(),
             by_key: HashMap::new(),
             recordings: BTreeMap::new(),
-            num_active_recordings: 0,
             pending_replays: HashMap::new(),
             replays: BTreeMap::new(),
             num_active_replays: 0,
@@ -1024,28 +1022,48 @@ impl Conductor {
         }
     }
 
-    /// Whether the archive records as many as it may: refused with `max_message`.
-    fn refuse_new_recording(&mut self, control_session_id: i64, correlation_id: i64, max_message: String) -> bool {
-        if self.num_active_recordings >= self.config.max_concurrent_recordings {
-            self.fail(
-                control_session_id,
-                correlation_id,
-                error_code::MAX_RECORDINGS,
-                &max_message,
-            );
+    /// Whether the archive has as many recording subscriptions, or records
+    /// as many images, as it may: a new one refused. Java 1.54's check,
+    /// where 1.53 counted up per subscription and down per recording.
+    fn refuse_new_recording(&mut self, control_session_id: i64, correlation_id: i64) -> bool {
+        let max = self.config.max_concurrent_recordings;
+        if self.subscriptions.len() as i64 >= i64::from(max) || self.recordings.len() as i64 >= i64::from(max) {
+            let message = format!("max concurrent recordings reached at {max}");
+            self.fail(control_session_id, correlation_id, error_code::MAX_RECORDINGS, &message);
             return true;
         }
         false
     }
 
-    fn low_storage(&mut self, control_session_id: i64, correlation_id: i64) -> bool {
+    /// Why a recording may not start, as Java's `isLowStorageSpace` says.
+    fn low_storage_message(&self) -> Option<String> {
         let threshold = self.config.low_storage_space_threshold;
-        if self.usable_space <= threshold {
-            let message = format!("low storage threshold={threshold} <= usableSpace={}", self.usable_space);
-            self.fail(control_session_id, correlation_id, error_code::STORAGE_SPACE, &message);
-            return true;
+        (self.usable_space <= threshold)
+            .then(|| format!("low storage threshold={threshold} <= usableSpace={}", self.usable_space))
+    }
+
+    fn low_storage(&mut self, control_session_id: i64, correlation_id: i64) -> bool {
+        match self.low_storage_message() {
+            Some(message) => {
+                self.fail(control_session_id, correlation_id, error_code::STORAGE_SPACE, &message);
+                true
+            }
+            None => false,
         }
-        false
+    }
+
+    /// Why an image may not be recorded now, checked again as it arrives
+    /// (Java 1.54): the archive recording as many as it may, or its
+    /// storage low.
+    fn refuse_recording_image(&self) -> Option<(i64, String)> {
+        let max = self.config.max_concurrent_recordings;
+        if self.recordings.len() as i64 >= i64::from(max) {
+            return Some((
+                error_code::MAX_RECORDINGS,
+                format!("max concurrent recordings reached at {max}"),
+            ));
+        }
+        self.low_storage_message().map(|m| (error_code::STORAGE_SPACE, m))
     }
 
     /// An error for the client, and no subscription.
@@ -1071,16 +1089,11 @@ impl Conductor {
         original_channel: String,
         extends: Option<i64>,
     ) -> Option<SubscriptionToken> {
-        if extends.is_none() {
-            let max = self.config.max_concurrent_recordings;
-            if self.refuse_new_recording(
-                control_session_id,
-                correlation_id,
-                format!("max concurrent recordings reached {max}"),
-            ) || self.low_storage(control_session_id, correlation_id)
-            {
-                return None;
-            }
+        if extends.is_none()
+            && (self.refuse_new_recording(control_session_id, correlation_id)
+                || self.low_storage(control_session_id, correlation_id))
+        {
+            return None;
         }
         let prepared = ChannelUri::parse(&original_channel).and_then(|uri| {
             let key = channel::recording_key(stream_id, &uri);
@@ -1151,12 +1164,7 @@ impl Conductor {
         auto_stop: bool,
         channel: String,
     ) -> Option<SubscriptionToken> {
-        let max = self.config.max_concurrent_recordings;
-        if self.refuse_new_recording(
-            control_session_id,
-            correlation_id,
-            format!("max concurrent recordings reached at {max}"),
-        ) {
+        if self.refuse_new_recording(control_session_id, correlation_id) {
             return None;
         }
         let Ok(recorded) = self.catalog.descriptor(recording_id) else {
@@ -1395,7 +1403,6 @@ impl Conductor {
             Ok(registration_id) => {
                 subscription.registration_id = registration_id;
                 self.ref_counts.insert(token, 1);
-                self.num_active_recordings += 1;
                 self.ok(control_session_id, correlation_id, registration_id);
             }
             Err(e) => {
@@ -1437,6 +1444,15 @@ impl Conductor {
         subscription: &RecordingSubscription,
         image: ImageInfo,
     ) {
+        if let Some((code, message)) = self.refuse_recording_image() {
+            self.fail(
+                subscription.control_session_id,
+                subscription.correlation_id,
+                code,
+                &message,
+            );
+            return self.warn(message);
+        }
         let segment_file_length = recording_segment_length(self.config.segment_file_length, image.term_buffer_length);
         let descriptor = Descriptor {
             control_session_id: 0,
@@ -1492,6 +1508,9 @@ impl Conductor {
                 error_code::ACTIVE_RECORDING,
                 format!("cannot extend active recording {recording_id} streamId={stream_id} channel={channel}"),
             ));
+        }
+        if let Some(refused) = self.refuse_recording_image() {
+            return Err(refused);
         }
         let recorded = self
             .catalog
@@ -1647,7 +1666,6 @@ impl Conductor {
         if *count <= 0 || recording.auto_stop {
             self.close_and_remove_subscription(token);
         }
-        self.num_active_recordings -= 1;
     }
 
     /// Runs the control sessions, newest first as Java's session worker:

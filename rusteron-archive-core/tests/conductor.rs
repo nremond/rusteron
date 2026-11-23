@@ -776,11 +776,11 @@ fn recordings_are_refused_past_the_limit_or_short_of_space() {
         shell.responses(cs),
         [
             ok(cs, 10, 1_000),
-            error(cs, 11, 8, "max concurrent recordings reached 1"),
+            error(cs, 11, 8, "max concurrent recordings reached at 1"),
             error(cs, 12, 8, "max concurrent recordings reached at 1"),
             ok(cs, 13, 0),
-            // Java's count stays up: the subscription had no recording.
-            error(cs, 14, 8, "max concurrent recordings reached 1")
+            // The subscription stopped, none is left (Java 1.54; 1.53's count stayed up): the space is short.
+            error(cs, 14, 11, "low storage threshold=134217728 <= usableSpace=100")
         ]
     );
     let mut shell = FakeShell::new(config());
@@ -794,6 +794,51 @@ fn recordings_are_refused_past_the_limit_or_short_of_space() {
     assert_eq!(
         shell.responses(cs),
         [error(cs, 10, 11, "low storage threshold=134217728 <= usableSpace=100")]
+    );
+}
+
+#[test]
+fn an_image_past_the_limit_is_not_recorded() {
+    // One subscription, so the request passes; its images then fill the recordings (Java 1.54 checks again as an
+    // image arrives, where 1.53 counted the subscription once and every recording's end down).
+    let mut shell = FakeShell::new(Config {
+        max_concurrent_recordings: 2,
+        ..config()
+    });
+    let cs = connect(&mut shell);
+    let (first, subscription_id) = record(&mut shell, cs, 10, LOG, 0);
+    let token = *shell
+        .subscriptions
+        .iter()
+        .find(|(_, s)| s.registration_id == subscription_id)
+        .unwrap()
+        .0;
+    shell.image(token, image(11, 78, 0));
+    shell.tick(1);
+    assert_eq!(
+        shell.responses(cs),
+        [signal(cs, 10, first + 1, subscription_id, 0, Signal::START)]
+    );
+    shell.image(token, image(12, 79, 0));
+    shell.tick(1);
+    assert_eq!(
+        shell.responses(cs),
+        [error(cs, 10, 8, "max concurrent recordings reached at 2")]
+    );
+    assert_eq!(shell.recorders.len(), 2);
+    assert_eq!(
+        shell.errors.last().map(String::as_str),
+        Some("WARN - max concurrent recordings reached at 2")
+    );
+    // A recording ended: the next image is recorded.
+    shell.end(first, None);
+    shell.image(token, image(13, 80, 0));
+    shell.tick(1);
+    assert!(
+        shell
+            .responses(cs)
+            .iter()
+            .any(|r| *r == signal(cs, 10, first + 2, subscription_id, 0, Signal::START))
     );
 }
 
