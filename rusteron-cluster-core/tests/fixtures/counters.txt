@@ -1,0 +1,16 @@
+212	03000000	Cluster Errors - clusterId=3 version=1.53.3 commit=377943bcb8
+200	03000000	Consensus Module state - clusterId=3
+207	03000000	Cluster election state - clusterId=3
+238	03000000	Cluster election count - clusterId=3
+239	03000000	Cluster leadership term id - clusterId=3
+201	03000000	Cluster node role - clusterId=3
+203	03000000	Cluster commit-pos: - clusterId=3
+202	03000000	Cluster control toggle - clusterId=3
+233	03000000	Node control toggle - clusterId=3
+205	03000000	Cluster snapshot count - clusterId=3
+213	03000000	Cluster timed out client count - clusterId=3
+216	03000000	Cluster max cycle time in ns - clusterId=3
+217	03000000	Cluster work cycle time exceeded count: threshold=100ms - clusterId=3
+234	03000000	Total max snapshot duration in ns - clusterId=3
+235	03000000	Total max snapshot duration exceeded count: threshold=1s - clusterId=3
+204	020000000000000000100000000000000068e5cf8b010000030000000200000029000000000000002a00000000000000	Cluster recovery: leadershipTermId=2 logPosition=4096 clusterId=3
