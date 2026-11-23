@@ -1,0 +1,15 @@
+[package]
+name = "rusteron-archive-codecs"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/nremond/rusteron"
+readme = "README.md"
+description = "Aeron Archive 1.53.3's SBE codecs (archive protocol and catalog, schema 101 v14; mark file, schema 100 v2), generated for Rust by sbe-tool 1.40.2."
+keywords = ["aeron", "aeron-archive", "sbe", "codecs"]
+categories = ["encoding", "network-programming"]
+include = ["src/**", "schemas/**", "README.md", "NOTICE", "regen.sh"]
+
+[dependencies]
+
+[dev-dependencies]

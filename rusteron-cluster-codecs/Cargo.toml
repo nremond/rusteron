@@ -1,0 +1,15 @@
+[package]
+name = "rusteron-cluster-codecs"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/nremond/rusteron"
+readme = "README.md"
+description = "Aeron Cluster 1.53.3's SBE codecs (cluster protocol, schema 111 v17; mark file, schema 110 v2), generated for Rust by sbe-tool 1.40.2."
+keywords = ["aeron", "aeron-cluster", "sbe", "codecs"]
+categories = ["encoding", "network-programming"]
+include = ["src/**", "schemas/**", "README.md", "NOTICE", "regen.sh"]
+
+[dependencies]
+
+[dev-dependencies]
