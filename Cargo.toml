@@ -7,6 +7,7 @@ members = [
     "rusteron-archive",
     "rusteron-archive-codecs",
     "rusteron-archive-core",
+    "rusteron-archive-server",
     "rusteron-cluster-codecs",
     "rusteron-cluster-core",
 ]

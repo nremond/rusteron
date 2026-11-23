@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Stands in for `java` in Aeron's C archive tests (TestArchive.h spawns `java ... io.aeron.archive.ArchivingMediaDriver`
+# with -D properties): Aeron's C media driver and the Rust archive, the properties mapped onto them. A SIGTERM
+# stops both, as it stops Java's. run.sh writes this file with the binaries' paths.
+set -u
+AERONMD=@AERONMD@
+ARCHIVE_BIN=@ARCHIVE_BIN@
+REAL_JAVA=@REAL_JAVA@
+
+# Anything but the archive (CMake asking `java -version`) goes to Java.
+case " $* " in
+  *" io.aeron.archive.ArchivingMediaDriver "*) ;;
+  *) exec "$REAL_JAVA" "$@" ;;
+esac
+
+driver_props=()
+archive_args=()
+aeron_dir=""
+archive_dir=""
+delete_archive_dir=false
+for arg in "$@"; do
+  case "$arg" in
+    -D*=*)
+      kv=${arg#-D}; key=${kv%%=*}; value=${kv#*=}
+      case "$key" in
+        aeron.dir) aeron_dir=$value; driver_props+=("$arg"); archive_args+=(--aeron-dir "$value") ;;
+        aeron.archive.dir) archive_dir=$value; archive_args+=(--archive-dir "$value") ;;
+        aeron.archive.dir.delete.on.start) [ "$value" = true ] && delete_archive_dir=true ;;
+        aeron.archive.mark.file.dir) archive_args+=(--mark-file-dir "$value") ;;
+        aeron.archive.control.channel) archive_args+=(--control-channel "$value") ;;
+        aeron.archive.replication.channel) archive_args+=(--replication-channel "$value") ;;
+        aeron.archive.control.response.channel) archive_args+=(--archive-client-response-channel "$value") ;;
+        aeron.archive.id) archive_args+=(--archive-id "$value") ;;
+        aeron.archive.max.concurrent.replays) archive_args+=(--max-concurrent-replays "$value") ;;
+        aeron.archive.segment.file.length) archive_args+=(--segment-file-length "$value") ;;
+        aeron.archive.*) ;;
+        # Java's validator classes; the C driver names its validators.
+        aeron.driver.termination.validator)
+          case "$value" in *Deny*) driver_props+=("-D$key=deny") ;; *) driver_props+=("-D$key=allow") ;; esac ;;
+        *) driver_props+=("$arg") ;;
+      esac
+      ;;
+  esac
+done
+
+if $delete_archive_dir && [ -n "$archive_dir" ]; then rm -rf "$archive_dir"; fi
+"$AERONMD" "${driver_props[@]}" &
+driver=$!
+for _ in $(seq 1 500); do [ -f "$aeron_dir/cnc.dat" ] && break; sleep 0.01; done
+if ! kill -0 "$driver" 2>/dev/null; then
+  echo "java (stand-in): the media driver did not start" >&2
+  exit 1
+fi
+"$ARCHIVE_BIN" "${archive_args[@]}" &
+archive=$!
+stop() {
+  kill -TERM "$archive" 2>/dev/null
+  wait "$archive" 2>/dev/null
+  kill -TERM "$driver" 2>/dev/null
+  wait "$driver" 2>/dev/null
+  exit 0
+}
+trap stop TERM INT
+# The test that spawned this gone (killed by a timeout, say): no orphans.
+parent=$PPID
+( while kill -0 "$parent" 2>/dev/null; do sleep 0.5; done; kill -TERM "$archive" "$driver" 2>/dev/null ) &
+wait "$archive"
+kill -TERM "$driver" 2>/dev/null
+wait "$driver" 2>/dev/null
