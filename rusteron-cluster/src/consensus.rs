@@ -7,12 +7,12 @@
 //! the services' and the archive's messages; the module's work; what it
 //! asked for; the images it reads (the ingress, replays).
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusteron_archive::*;
@@ -196,18 +196,26 @@ enum Event {
     },
 }
 
+/// Events as the client's conductor reports them, behind a lock: Aeron keeps
+/// the callbacks, so they must be `Send` (rusteron 0.3).
 #[derive(Clone, Default)]
-struct Events(Rc<RefCell<Vec<Event>>>);
+struct Events(Arc<Mutex<Vec<Event>>>);
 
-fn registration_id(subscription: &AeronSubscription) -> i64 {
+impl Events {
+    fn lock(&self) -> MutexGuard<'_, Vec<Event>> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+fn registration_id<S: ResourceStorage<bindings::aeron_subscription_t>>(subscription: &AeronSubscription<S>) -> i64 {
     subscription.get_constants().map(|c| c.registration_id()).unwrap_or(-1)
 }
 
 impl AeronAvailableImageCallback for Events {
-    fn handle_aeron_on_available_image(&mut self, subscription: AeronSubscription, image: AeronImage) {
+    fn handle_aeron_on_available_image(&mut self, subscription: &AeronSubscriptionRef, image: &AeronImageRef) {
         if let Ok(c) = image.get_constants() {
-            self.0.borrow_mut().push(Event::ImageAvailable {
-                registration_id: registration_id(&subscription),
+            self.lock().push(Event::ImageAvailable {
+                registration_id: registration_id(subscription),
                 session_id: c.session_id(),
                 correlation_id: c.correlation_id(),
                 join_position: c.join_position(),
@@ -219,10 +227,10 @@ impl AeronAvailableImageCallback for Events {
 }
 
 impl AeronUnavailableImageCallback for Events {
-    fn handle_aeron_on_unavailable_image(&mut self, subscription: AeronSubscription, image: AeronImage) {
+    fn handle_aeron_on_unavailable_image(&mut self, subscription: &AeronSubscriptionRef, image: &AeronImageRef) {
         if let Ok(c) = image.get_constants() {
-            self.0.borrow_mut().push(Event::ImageUnavailable {
-                registration_id: registration_id(&subscription),
+            self.lock().push(Event::ImageUnavailable {
+                registration_id: registration_id(subscription),
                 session_id: c.session_id(),
                 correlation_id: c.correlation_id(),
                 end_of_stream: image.is_end_of_stream(),
@@ -232,8 +240,8 @@ impl AeronUnavailableImageCallback for Events {
 }
 
 impl AeronUnavailableCounterCallback for Events {
-    fn handle_aeron_on_unavailable_counter(&mut self, _: AeronCountersReader, registration_id: i64, _: i32) {
-        self.0.borrow_mut().push(Event::CounterUnavailable { registration_id });
+    fn handle_aeron_on_unavailable_counter(&mut self, _: &AeronCountersReaderRef, registration_id: i64, _: i32) {
+        self.lock().push(Event::CounterUnavailable { registration_id });
     }
 }
 
@@ -290,23 +298,31 @@ enum Destination {
 /// What the module reaches through the shell: everything but the module itself.
 struct Node {
     aeron: Aeron,
-    counters_reader: AeronCountersReader,
     counters: Counters,
     log_publication: Option<AeronExclusivePublication>,
     snapshot_publication: Option<AeronExclusivePublication>,
     service_publication: AeronPublication,
     archive_publication: AeronExclusivePublication,
-    archive_subscription: AeronSubscription,
+    /// Shared with each poll, which cannot borrow it from the node it hands
+    /// the module.
+    archive_subscription: Rc<AeronSubscription>,
     archive_response_channel: String,
     egress: HashMap<EgressId, Egress>,
     /// This member's publications to the others, by member id.
     consensus: HashMap<i32, AeronExclusivePublication>,
-    subscriptions: HashMap<SubscriptionId, AeronSubscription>,
+    subscriptions: HashMap<SubscriptionId, Rc<AeronSubscription>>,
     /// The registration ids of subscriptions removed, while their sockets close.
     removed: HashMap<SubscriptionId, i64>,
     /// `node-state.dat`, written and synced before the module acts on it.
     node_state: File,
     file_sync_level: i32,
+}
+
+impl Node {
+    /// The driver's counters, a view of the client's.
+    fn counters_reader(&self) -> Ref<'_, AeronCountersReader> {
+        self.aeron.counters_reader()
+    }
 }
 
 impl Ports for Node {
@@ -387,11 +403,11 @@ impl Ports for Node {
     }
 
     fn find_recording_counter(&self, session_id: i32, archive_id: i64) -> Option<RecordingCounter> {
-        let (counter_id, key) = find_counter(&self.counters_reader, |type_id, key| {
+        let (counter_id, key) = find_counter(&self.counters_reader(), |type_id, key| {
             type_id == RECORDING_POSITION_TYPE_ID
                 && RecordingPosition::parse(key).is_ok_and(|r| r.session_id == session_id && r.archive_id == archive_id)
         })?;
-        let registration_id = self.counters_reader.counter_registration_id(counter_id).ok()?;
+        let registration_id = self.counters_reader().counter_registration_id(counter_id).ok()?;
         if registration_id == 0 {
             return None;
         }
@@ -404,12 +420,12 @@ impl Ports for Node {
     }
 
     fn find_recording_counter_by_recording(&self, recording_id: i64, archive_id: i64) -> Option<RecordingCounter> {
-        let (counter_id, _) = find_counter(&self.counters_reader, |type_id, key| {
+        let (counter_id, _) = find_counter(&self.counters_reader(), |type_id, key| {
             type_id == RECORDING_POSITION_TYPE_ID
                 && RecordingPosition::parse(key)
                     .is_ok_and(|r| r.recording_id == recording_id && r.archive_id == archive_id)
         })?;
-        let registration_id = self.counters_reader.counter_registration_id(counter_id).ok()?;
+        let registration_id = self.counters_reader().counter_registration_id(counter_id).ok()?;
         if registration_id == 0 {
             return None;
         }
@@ -421,12 +437,13 @@ impl Ports for Node {
     }
 
     fn counter_value(&self, counter_id: i32) -> i64 {
-        load(&self.counters_reader, counter_id)
+        load(&self.counters_reader(), counter_id)
     }
 
     fn is_counter_active(&self, counter_id: i32, registration_id: i64) -> bool {
-        self.counters_reader.counter_state(counter_id).ok() == Some(RECORD_ALLOCATED)
-            && self.counters_reader.counter_registration_id(counter_id).ok() == Some(registration_id)
+        let reader = self.counters_reader();
+        reader.counter_state(counter_id).ok() == Some(RECORD_ALLOCATED)
+            && reader.counter_registration_id(counter_id).ok() == Some(registration_id)
     }
 
     fn set_counter(&mut self, counter: CounterId, value: i64) {
@@ -470,7 +487,7 @@ impl Ports for Node {
         let Some(&registration_id) = self.removed.get(&subscription) else {
             return false;
         };
-        let reader = &self.counters_reader;
+        let reader = self.counters_reader();
         let mut found = false;
         reader.foreach_counter_fn(|_, id, type_id, _, _| {
             found |= type_id == LOCAL_SOCKET_ADDRESS_STATUS_TYPE_ID
@@ -501,8 +518,8 @@ pub struct ConsensusModuleNode {
     destinations: Vec<Destination>,
     images: HashMap<(SubscriptionId, i32), IngressImage>,
     events: Events,
-    image_handler: Handler<Events>,
-    _counter_handler: Option<Handler<Events>>,
+    image_handler: SharedHandler<Events>,
+    _counter_handler: Option<SharedHandler<Events>>,
     last_slow_tick_ms: i64,
     mark_deadline_ms: i64,
     idle_count: u32,
@@ -658,21 +675,19 @@ impl ConsensusModuleNode {
             Handlers::NONE,
             ADD_TIMEOUT,
         )?;
-        let counters_reader = aeron.counters_reader();
         let cluster_time = cluster_time(config.time_unit);
         let file_sync_level = config.file_sync_level;
         let core = ConsensusModule::new(config, log, state, cluster_time).map_err(ConsensusError::Config)?;
-        let image_handler = Handler::new(events.clone());
+        let image_handler = SharedHandler::new_shared(events.clone());
         Ok(Self {
             core,
             node: Node {
-                counters_reader,
                 counters,
                 log_publication: None,
                 snapshot_publication: None,
                 service_publication,
                 archive_publication,
-                archive_subscription,
+                archive_subscription: Rc::new(archive_subscription),
                 archive_response_channel: ctx.archive_control_response_channel.clone(),
                 egress: HashMap::new(),
                 consensus: HashMap::new(),
@@ -813,7 +828,7 @@ impl ConsensusModuleNode {
                 self.record_error(&format!("mark file: {e}"));
             }
         }
-        let events = std::mem::take(&mut *self.events.0.borrow_mut());
+        let events = std::mem::take(&mut *self.events.lock());
         work += events.len();
         for event in events {
             match event {
@@ -881,7 +896,7 @@ impl ConsensusModuleNode {
         self.service_subscription
             .poll_fn(
                 |buffer, header| {
-                    reassembler.on_fragment(fragment(buffer, &header), |message, _| {
+                    reassembler.on_fragment(fragment(buffer, header), |message, _| {
                         core.on_service_message(message, node);
                         PollAction::Continue
                     });
@@ -896,11 +911,11 @@ impl ConsensusModuleNode {
         let core = &mut self.core;
         let node = &mut self.node;
         let reassembler = &mut self.archive_reassembler;
-        let subscription = node.archive_subscription.clone();
+        let subscription = Rc::clone(&node.archive_subscription);
         subscription
             .poll_fn(
                 |buffer, header| {
-                    reassembler.on_fragment(fragment(buffer, &header), |message, _| {
+                    reassembler.on_fragment(fragment(buffer, header), |message, _| {
                         core.on_archive_message(message, node);
                         PollAction::Continue
                     });
@@ -935,7 +950,7 @@ impl ConsensusModuleNode {
                                             session_id,
                                             source_identity: String::new(),
                                         });
-                                controlled(core.on_ingress_fragment(fragment(buffer, &header), &image, node))
+                                controlled(core.on_ingress_fragment(fragment(buffer, header), &image, node))
                             },
                             INGRESS_FRAGMENT_LIMIT,
                         )
@@ -949,7 +964,7 @@ impl ConsensusModuleNode {
                         .poll_fn(
                             |buffer, header| {
                                 let session_id = header.get_values().map(|v| v.frame().session_id()).unwrap_or(0);
-                                core.on_consensus_fragment(fragment(buffer, &header), session_id, node);
+                                core.on_consensus_fragment(fragment(buffer, header), session_id, node);
                             },
                             CONSENSUS_FRAGMENT_LIMIT,
                         )
@@ -965,7 +980,7 @@ impl ConsensusModuleNode {
                     work += image
                         .bounded_controlled_poll_fn(
                             |buffer, header| {
-                                controlled(core.on_image_fragment(subscription_id, fragment(buffer, &header), node))
+                                controlled(core.on_image_fragment(subscription_id, fragment(buffer, header), node))
                             },
                             limit,
                             LOG_FRAGMENT_LIMIT,
@@ -1075,7 +1090,7 @@ impl ConsensusModuleNode {
                     ADD_TIMEOUT,
                 )?;
                 self.by_registration.insert(registration_id(&s), subscription);
-                self.node.subscriptions.insert(subscription, s);
+                self.node.subscriptions.insert(subscription, Rc::new(s));
             }
             Action::RemoveSubscription { subscription } => {
                 if let Some(s) = self.node.subscriptions.remove(&subscription) {
@@ -1083,7 +1098,9 @@ impl ConsensusModuleNode {
                     self.by_registration.remove(&id);
                     self.node.removed.insert(subscription, id);
                     self.images.retain(|(id, _), _| *id != subscription);
-                    let _ = s.close();
+                    if let Ok(s) = Rc::try_unwrap(s) {
+                        let _ = s.close();
+                    }
                 }
             }
             Action::AddSnapshotPublication { channel, stream_id } => {

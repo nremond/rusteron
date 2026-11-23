@@ -3,7 +3,7 @@
 
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use rusteron_archive::{AeronCounter, AeronCountersReader};
+use rusteron_archive::{AeronCounter, AeronCountersReaderRef};
 
 fn value(addr: *mut i64) -> &'static AtomicI64 {
     // SAFETY: a counter's value is an aligned i64 in the driver's counters
@@ -30,7 +30,7 @@ pub fn compare_and_set(counter: &AeronCounter, expected: i64, new: i64) -> bool 
 }
 
 /// A counter's value, as Java's `getCounterValue`.
-pub fn load(counters: &AeronCountersReader, counter_id: i32) -> i64 {
+pub fn load(counters: &AeronCountersReaderRef, counter_id: i32) -> i64 {
     value(counters.addr(counter_id)).load(Ordering::Acquire)
 }
 

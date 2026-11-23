@@ -91,22 +91,22 @@ impl Images {
     }
 }
 
-fn registration_id(subscription: &AeronSubscription) -> i64 {
+fn registration_id<S: ResourceStorage<bindings::aeron_subscription_t>>(subscription: &AeronSubscription<S>) -> i64 {
     subscription.get_constants().map(|c| c.registration_id()).unwrap_or(-1)
 }
 
 impl AeronAvailableImageCallback for Images {
-    fn handle_aeron_on_available_image(&mut self, subscription: AeronSubscription, image: AeronImage) {
+    fn handle_aeron_on_available_image(&mut self, subscription: &AeronSubscriptionRef, image: &AeronImageRef) {
         if let Ok(c) = image.get_constants() {
-            self.set().remove(&(registration_id(&subscription), c.session_id()));
+            self.set().remove(&(registration_id(subscription), c.session_id()));
         }
     }
 }
 
 impl AeronUnavailableImageCallback for Images {
-    fn handle_aeron_on_unavailable_image(&mut self, subscription: AeronSubscription, image: AeronImage) {
+    fn handle_aeron_on_unavailable_image(&mut self, subscription: &AeronSubscriptionRef, image: &AeronImageRef) {
         if let Ok(c) = image.get_constants() {
-            self.set().insert((registration_id(&subscription), c.session_id()));
+            self.set().insert((registration_id(subscription), c.session_id()));
         }
     }
 }
@@ -162,7 +162,7 @@ struct Ports {
     failed: HashMap<Handle, String>,
     reassemblers: HashMap<(Handle, i32), Reassembler>,
     images: Images,
-    image_handler: Handler<Images>,
+    image_handler: SharedHandler<Images>,
     idle: ClientIdle,
     backoff: Backoff,
 }
@@ -200,7 +200,7 @@ impl Ports {
             subscriptions: HashMap::new(),
             failed: HashMap::new(),
             reassemblers: HashMap::new(),
-            image_handler: Handler::new(images.clone()),
+            image_handler: SharedHandler::new_shared(images.clone()),
             images,
             idle: ctx.idle,
             backoff: Backoff::default(),
@@ -251,7 +251,8 @@ fn position(result: Result<i64, AeronOfferError>) -> i64 {
         Err(AeronOfferError::AdminAction) => ADMIN_ACTION,
         Err(AeronOfferError::MaxPositionExceeded) => MAX_POSITION_EXCEEDED,
         Err(AeronOfferError::Closed) => CLOSED,
-        Err(AeronOfferError::TooManyParts | AeronOfferError::Error(_)) => PUBLICATION_ERROR,
+        // TooManyParts, Error and any later kind (the enum is non-exhaustive).
+        Err(_) => PUBLICATION_ERROR,
     }
 }
 
@@ -470,7 +471,7 @@ impl ClientPorts for Ports {
                     let session_id = header.get_values().map(|v| v.frame().session_id()).unwrap_or(0);
                     let reassembler = reassemblers.entry((subscription, session_id)).or_default();
                     controlled(
-                        reassembler.on_fragment(fragment(buffer, &header), |message, _| handler(message, session_id)),
+                        reassembler.on_fragment(fragment(buffer, header), |message, _| handler(message, session_id)),
                     )
                 },
                 limit,

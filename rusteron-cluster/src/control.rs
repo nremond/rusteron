@@ -6,7 +6,7 @@
 
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use rusteron_archive::AeronCountersReader;
+use rusteron_archive::AeronCountersReaderRef;
 
 use crate::container::find_counter;
 
@@ -18,7 +18,7 @@ pub const SNAPSHOT: i64 = 4;
 pub const STANDBY_SNAPSHOT: i64 = 7;
 
 /// The control toggle of the cluster `cluster_id`: its key starts with the cluster's id.
-pub fn find_control_toggle(counters: &AeronCountersReader, cluster_id: i32) -> Option<i32> {
+pub fn find_control_toggle(counters: &AeronCountersReaderRef, cluster_id: i32) -> Option<i32> {
     find_counter(counters, |type_id, key| {
         type_id == CONTROL_TOGGLE_TYPE_ID && key.get(..4) == Some(&cluster_id.to_le_bytes()[..])
     })
@@ -29,7 +29,7 @@ pub fn find_control_toggle(counters: &AeronCountersReader, cluster_id: i32) -> O
 /// `ClusterControl.ToggleState.SNAPSHOT.toggle` does: taken only from the
 /// neutral state, so refused while another action is under way, or with no
 /// toggle found.
-pub fn request_snapshot(counters: &AeronCountersReader, cluster_id: i32) -> bool {
+pub fn request_snapshot(counters: &AeronCountersReaderRef, cluster_id: i32) -> bool {
     request(counters, cluster_id, SNAPSHOT)
 }
 
@@ -37,11 +37,11 @@ pub fn request_snapshot(counters: &AeronCountersReader, cluster_id: i32) -> bool
 /// `ClusterControl.ToggleState.STANDBY_SNAPSHOT.toggle` does: the members
 /// skip the snapshot action it appends, and a standby takes it. Taken only
 /// from the neutral state, as a snapshot is.
-pub fn request_standby_snapshot(counters: &AeronCountersReader, cluster_id: i32) -> bool {
+pub fn request_standby_snapshot(counters: &AeronCountersReaderRef, cluster_id: i32) -> bool {
     request(counters, cluster_id, STANDBY_SNAPSHOT)
 }
 
-fn request(counters: &AeronCountersReader, cluster_id: i32, state: i64) -> bool {
+fn request(counters: &AeronCountersReaderRef, cluster_id: i32, state: i64) -> bool {
     let Some(id) = find_control_toggle(counters, cluster_id) else {
         return false;
     };

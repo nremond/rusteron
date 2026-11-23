@@ -26,14 +26,13 @@
 //! # Ok(()) }
 //! ```
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -222,17 +221,24 @@ fn fragment<'a>(buffer: &'a [u8], header: &AeronHeader) -> Fragment<'a> {
     }
 }
 
-fn registration_id(subscription: &AeronSubscription) -> i64 {
+fn registration_id<S: ResourceStorage<bindings::aeron_subscription_t>>(subscription: &AeronSubscription<S>) -> i64 {
     subscription.get_constants().map(|c| c.registration_id()).unwrap_or(-1)
 }
 
-/// The counters gone, as the client's callback reports them.
+/// The counters gone, as the client's callback reports them, behind a lock:
+/// Aeron keeps the callback, so it must be `Send` (rusteron 0.3).
 #[derive(Clone, Default)]
-struct CountersGone(Rc<RefCell<Vec<i32>>>);
+struct CountersGone(Arc<Mutex<Vec<i32>>>);
+
+impl CountersGone {
+    fn lock(&self) -> MutexGuard<'_, Vec<i32>> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
 
 impl AeronUnavailableCounterCallback for CountersGone {
-    fn handle_aeron_on_unavailable_counter(&mut self, _: AeronCountersReader, _: i64, counter_id: i32) {
-        self.0.borrow_mut().push(counter_id);
+    fn handle_aeron_on_unavailable_counter(&mut self, _: &AeronCountersReaderRef, _: i64, counter_id: i32) {
+        self.lock().push(counter_id);
     }
 }
 
@@ -259,7 +265,9 @@ impl Counters {
 /// An archive's control publication and response subscription.
 struct ArchiveLink {
     publication: AeronExclusivePublication,
-    subscription: AeronSubscription,
+    /// Shared with each poll, which cannot borrow it from the I/O it hands
+    /// the backup.
+    subscription: Rc<AeronSubscription>,
     response_channel: String,
     /// A response channel's (`control-mode=response`): sent as given.
     is_response_channel: bool,
@@ -268,7 +276,6 @@ struct ArchiveLink {
 /// What the backup reaches through the shell: everything but the backup itself.
 struct BackupIo {
     aeron: Aeron,
-    counters_reader: AeronCountersReader,
     counters: Counters,
     consensus_publication: Option<AeronExclusivePublication>,
     local: Option<ArchiveLink>,
@@ -277,6 +284,11 @@ struct BackupIo {
 }
 
 impl BackupIo {
+    /// The driver's counters, a view of the client's.
+    fn counters_reader(&self) -> Ref<'_, AeronCountersReader> {
+        self.aeron.counters_reader()
+    }
+
     fn link(&self, archive: ArchiveId) -> Option<&ArchiveLink> {
         match archive {
             ArchiveId::Local => self.local.as_ref(),
@@ -335,11 +347,11 @@ impl Ports for BackupIo {
     }
 
     fn find_recording_counter(&self, session_id: i32, archive_id: i64) -> Option<RecordingCounter> {
-        let (counter_id, key) = find_counter(&self.counters_reader, |type_id, key| {
+        let (counter_id, key) = find_counter(&self.counters_reader(), |type_id, key| {
             type_id == RECORDING_POSITION_TYPE_ID
                 && RecordingPosition::parse(key).is_ok_and(|r| r.session_id == session_id && r.archive_id == archive_id)
         })?;
-        let registration_id = self.counters_reader.counter_registration_id(counter_id).ok()?;
+        let registration_id = self.counters_reader().counter_registration_id(counter_id).ok()?;
         if registration_id == 0 {
             return None;
         }
@@ -352,12 +364,12 @@ impl Ports for BackupIo {
     }
 
     fn find_recording_counter_by_recording(&self, recording_id: i64, archive_id: i64) -> Option<RecordingCounter> {
-        let (counter_id, _) = find_counter(&self.counters_reader, |type_id, key| {
+        let (counter_id, _) = find_counter(&self.counters_reader(), |type_id, key| {
             type_id == RECORDING_POSITION_TYPE_ID
                 && RecordingPosition::parse(key)
                     .is_ok_and(|r| r.recording_id == recording_id && r.archive_id == archive_id)
         })?;
-        let registration_id = self.counters_reader.counter_registration_id(counter_id).ok()?;
+        let registration_id = self.counters_reader().counter_registration_id(counter_id).ok()?;
         if registration_id == 0 {
             return None;
         }
@@ -369,12 +381,13 @@ impl Ports for BackupIo {
     }
 
     fn counter_value(&self, counter_id: i32) -> i64 {
-        load(&self.counters_reader, counter_id)
+        load(&self.counters_reader(), counter_id)
     }
 
     fn is_counter_active(&self, counter_id: i32, registration_id: i64) -> bool {
-        self.counters_reader.counter_state(counter_id).ok() == Some(RECORD_ALLOCATED)
-            && self.counters_reader.counter_registration_id(counter_id).ok() == Some(registration_id)
+        let reader = self.counters_reader();
+        reader.counter_state(counter_id).ok() == Some(RECORD_ALLOCATED)
+            && reader.counter_registration_id(counter_id).ok() == Some(registration_id)
     }
 
     fn counter(&self, counter: BackupCounter) -> i64 {
@@ -394,12 +407,12 @@ pub struct ClusterBackupNode<L: BackupListener = ()> {
     ctx: BackupContext,
     mark: MarkFile,
     recording_log: File,
-    consensus_subscription: Option<AeronSubscription>,
+    consensus_subscription: Option<Rc<AeronSubscription>>,
     consensus_reassemblers: HashMap<i32, Reassembler>,
     local_reassembler: Reassembler,
     cluster_reassembler: Reassembler,
     counters_gone: CountersGone,
-    _counter_handler: Option<Handler<CountersGone>>,
+    _counter_handler: Option<SharedHandler<CountersGone>>,
     last_slow_tick_ms: i64,
     mark_deadline_ms: i64,
     idle_count: u32,
@@ -475,7 +488,6 @@ impl<L: BackupListener> ClusterBackupNode<L> {
         let mut node = Self {
             core,
             io: BackupIo {
-                counters_reader: aeron.counters_reader(),
                 counters,
                 consensus_publication: None,
                 local: None,
@@ -623,7 +635,7 @@ impl<L: BackupListener> ClusterBackupNode<L> {
                 self.record(false, &format!("mark file: {e}"));
             }
         }
-        let gone = std::mem::take(&mut *self.counters_gone.0.borrow_mut());
+        let gone = std::mem::take(&mut *self.counters_gone.lock());
         work += gone.len();
         for counter_id in gone {
             self.core.on_io(Io::CounterUnavailable { counter_id }, &mut self.io);
@@ -643,7 +655,7 @@ impl<L: BackupListener> ClusterBackupNode<L> {
                 |buffer, header| {
                     let session_id = header.get_values().map(|v| v.frame().session_id()).unwrap_or(0);
                     let reassembler = reassemblers.entry(session_id).or_default();
-                    reassembler.on_fragment(fragment(buffer, &header), |message, _| {
+                    reassembler.on_fragment(fragment(buffer, header), |message, _| {
                         core.on_consensus_message(message, io);
                         rusteron_cluster_core::log::PollAction::Continue
                     });
@@ -667,7 +679,7 @@ impl<L: BackupListener> ClusterBackupNode<L> {
         subscription
             .poll_fn(
                 |buffer, header| {
-                    reassembler.on_fragment(fragment(buffer, &header), |message, _| {
+                    reassembler.on_fragment(fragment(buffer, header), |message, _| {
                         core.on_archive_message(archive, message, io);
                         rusteron_cluster_core::log::PollAction::Continue
                     });
@@ -769,7 +781,7 @@ impl<L: BackupListener> ClusterBackupNode<L> {
         let publication = self.add_publication(&request_channel, request_stream_id)?;
         Ok(ArchiveLink {
             publication,
-            subscription,
+            subscription: Rc::new(subscription),
             response_channel: response_channel.to_owned(),
             is_response_channel,
         })
@@ -778,7 +790,7 @@ impl<L: BackupListener> ClusterBackupNode<L> {
     fn execute(&mut self, action: Action) -> Result<(), BackupError> {
         match action {
             Action::AddConsensusSubscription { channel, stream_id } => {
-                self.consensus_subscription = Some(self.add_subscription(&channel, stream_id)?);
+                self.consensus_subscription = Some(Rc::new(self.add_subscription(&channel, stream_id)?));
             }
             Action::AddConsensusPublication { channel, stream_id } => {
                 if let Some(p) = self.io.consensus_publication.take() {
@@ -822,7 +834,9 @@ impl<L: BackupListener> ClusterBackupNode<L> {
                 };
                 if let Some(link) = link {
                     let _ = link.publication.close();
-                    let _ = link.subscription.close();
+                    if let Ok(subscription) = Rc::try_unwrap(link.subscription) {
+                        let _ = subscription.close();
+                    }
                 }
             }
             Action::AddRecordingSubscription { channel, stream_id } => {

@@ -181,7 +181,6 @@ pub struct ServiceContainer<S: ClusteredService> {
     core: Container<S>,
     ctx: ContainerContext,
     aeron: Aeron,
-    counters: AeronCountersReader,
     cm_publication: AeronPublication,
     cm_subscription: AeronSubscription,
     cm_reassembler: Reassembler,
@@ -257,7 +256,7 @@ fn shield(panicked: &mut Option<String>, f: impl FnOnce() -> PollAction) -> Poll
 
 /// The first counter whose type and key match, and its key: the whole key area, as binary keys
 /// need it (rusteron's `get_counter_key` cuts a key at its first zero byte).
-pub fn find_counter(counters: &AeronCountersReader, matches: impl Fn(i32, &[u8]) -> bool) -> Option<(i32, Vec<u8>)> {
+pub fn find_counter(counters: &AeronCountersReaderRef, matches: impl Fn(i32, &[u8]) -> bool) -> Option<(i32, Vec<u8>)> {
     let mut found = None;
     counters.foreach_counter_fn(|_value, id, type_id, key, _label| {
         if found.is_none() && matches(type_id, key) {
@@ -336,7 +335,6 @@ impl<S: ClusteredService> ServiceContainer<S> {
             core,
             ctx,
             aeron,
-            counters,
             cm_publication,
             cm_subscription,
             cm_reassembler: Reassembler::default(),
@@ -438,8 +436,8 @@ impl<S: ClusteredService> ServiceContainer<S> {
             return work;
         }
         let (id, registration_id) = self.commit_counter;
-        let alive = self.counters.counter_state(id).ok() == Some(RECORD_ALLOCATED)
-            && self.counters.counter_registration_id(id).ok() == Some(registration_id);
+        let alive = self.aeron.counters_reader().counter_state(id).ok() == Some(RECORD_ALLOCATED)
+            && self.aeron.counters_reader().counter_registration_id(id).ok() == Some(registration_id);
         if !alive {
             self.core.on_commit_position_closed();
         }
@@ -453,7 +451,7 @@ impl<S: ClusteredService> ServiceContainer<S> {
         let reassembler = &mut self.cm_reassembler;
         let polled = self.cm_subscription.poll_fn(
             |buffer, header| {
-                reassembler.on_fragment(fragment(buffer, &header), |message, _| {
+                reassembler.on_fragment(fragment(buffer, header), |message, _| {
                     core.on_cm_message(message);
                     PollAction::Continue
                 });
@@ -627,7 +625,9 @@ impl<S: ClusteredService> ServiceContainer<S> {
             self.core.on_io(Io::LogImage { join_position });
             return 1;
         }
-        let commit = self.counters.get_counter_value(self.commit_counter.0);
+        let Ok(commit) = self.aeron.counters_reader().get_counter_value(self.commit_counter.0) else {
+            return 0;
+        };
         let Some(limit) = self.core.log_poll_limit(commit) else {
             return 0;
         };
@@ -638,7 +638,7 @@ impl<S: ClusteredService> ServiceContainer<S> {
         let polled = image.bounded_controlled_poll_fn(
             |buffer, header| {
                 controlled(shield(&mut panicked, || {
-                    core.on_log_fragment(fragment(buffer, &header), &mut publications)
+                    core.on_log_fragment(fragment(buffer, header), &mut publications)
                 }))
             },
             limit,
@@ -694,7 +694,7 @@ impl<S: ClusteredService> ServiceContainer<S> {
         let polled = image.controlled_poll_fn(
             |buffer, header| {
                 controlled(shield(&mut panicked, || {
-                    core.on_snapshot_fragment(fragment(buffer, &header))
+                    core.on_snapshot_fragment(fragment(buffer, header))
                 }))
             },
             10,
@@ -758,7 +758,7 @@ impl<S: ClusteredService> ServiceContainer<S> {
         if recording.counter.is_none() {
             let session_id = publication.get_constants().map(|c| c.session_id()).unwrap_or(0);
             let archive_id = recording.archive.archive_id();
-            let found = find_counter(&self.counters, |type_id, key| {
+            let found = find_counter(&self.aeron.counters_reader(), |type_id, key| {
                 type_id == RECORDING_POSITION_TYPE_ID
                     && RecordingPosition::parse(key)
                         .is_ok_and(|r| r.session_id == session_id && r.archive_id == archive_id)
@@ -772,7 +772,11 @@ impl<S: ClusteredService> ServiceContainer<S> {
                 return 0;
             };
             // Not yet registered (see launch): looked for again on the next poll.
-            let registration_id = self.counters.counter_registration_id(counter_id).unwrap_or(0);
+            let registration_id = self
+                .aeron
+                .counters_reader()
+                .counter_registration_id(counter_id)
+                .unwrap_or(0);
             if registration_id == 0 {
                 return 0;
             }
@@ -808,7 +812,12 @@ impl<S: ClusteredService> ServiceContainer<S> {
             && let Some((counter_id, recording_id, registration_id)) = recording.counter
         {
             let position = publication.position();
-            if self.counters.get_counter_value(counter_id) >= position {
+            if self
+                .aeron
+                .counters_reader()
+                .get_counter_value(counter_id)
+                .is_ok_and(|v| v >= position)
+            {
                 recording.awaiting = false;
                 self.core.on_io(Io::SnapshotRecorded);
                 return work + 1;
@@ -816,8 +825,8 @@ impl<S: ClusteredService> ServiceContainer<S> {
             // The same counter, still in use: its registration id names one allocation, as the recording id in
             // its key does for Java's RecordingPos.isActive. (rusteron's get_counter_key reads a key up to its
             // first zero byte, which cuts a binary key short.)
-            let active = self.counters.counter_state(counter_id).ok() == Some(RECORD_ALLOCATED)
-                && self.counters.counter_registration_id(counter_id).ok() == Some(registration_id);
+            let active = self.aeron.counters_reader().counter_state(counter_id).ok() == Some(RECORD_ALLOCATED)
+                && self.aeron.counters_reader().counter_registration_id(counter_id).ok() == Some(registration_id);
             if !active {
                 self.core.on_io(Io::SnapshotFailed {
                     message: format!("recording stopped unexpectedly: {recording_id}"),

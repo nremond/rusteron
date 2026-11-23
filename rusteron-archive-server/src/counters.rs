@@ -3,7 +3,7 @@
 
 use std::sync::atomic::{AtomicI64, Ordering};
 
-use rusteron_archive::{AeronCounter, AeronCountersReader};
+use rusteron_archive::{AeronCounter, AeronCountersReaderRef};
 
 /// Sets a counter's value, release-ordered, as Java's `setRelease`.
 pub fn store(counter: &AeronCounter, value: i64) {
@@ -28,7 +28,7 @@ pub fn propose_max(counter: &AeronCounter, value: i64) {
 }
 
 /// A counter's value, by id, acquire-ordered as Java's `getCounterValue`.
-pub fn load(counters: &AeronCountersReader, counter_id: i32) -> i64 {
+pub fn load(counters: &AeronCountersReaderRef, counter_id: i32) -> i64 {
     let addr: *mut i64 = counters.addr(counter_id);
     // SAFETY: the reader's values buffer holds every counter id it knows,
     // aligned, mapped for as long as the client is open.

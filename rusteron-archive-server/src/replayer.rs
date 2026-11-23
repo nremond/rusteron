@@ -8,7 +8,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use rusteron_archive::{AeronCountersReader, AeronExclusivePublication};
+use rusteron_archive::{AeronCountersReaderRef, AeronExclusivePublication};
 use rusteron_archive_core::protocol::error_code;
 use rusteron_archive_core::replay::{Limit, ReplayError, ReplaySession, ReplayState};
 
@@ -142,7 +142,7 @@ impl Replayer {
         }
     }
 
-    fn limit(&self, counters: &AeronCountersReader) -> Limit {
+    fn limit(&self, counters: &AeronCountersReaderRef) -> Limit {
         match self.limit {
             LimitCounter::None => Limit {
                 value: self.session.params().stop_position,
@@ -176,7 +176,7 @@ impl Replayer {
     pub fn poll(
         &mut self,
         now_ms: i64,
-        counters: &AeronCountersReader,
+        counters: &AeronCountersReaderRef,
         buffer: &mut [u8],
         stats: &mut ReadStats,
     ) -> Replayed {
@@ -239,7 +239,7 @@ impl Replayer {
     /// `replay()`: whether it did anything; `Err` when it ended.
     fn replay(
         &mut self,
-        counters: &AeronCountersReader,
+        counters: &AeronCountersReaderRef,
         buffer: &mut [u8],
         stats: &mut ReadStats,
     ) -> Result<bool, Option<ReplayError>> {

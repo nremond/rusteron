@@ -15,12 +15,11 @@ pub mod markfile;
 pub mod recorder;
 pub mod replayer;
 
-use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use rusteron_archive::*;
@@ -197,10 +196,18 @@ enum ImageEvent {
     Unavailable { subscription_id: i64, session_id: i32 },
 }
 
+/// Images as the client's conductor reports them, behind a lock: Aeron
+/// keeps the callbacks, so they must be `Send` (rusteron 0.3).
 #[derive(Clone, Default)]
-struct ImageEvents(Rc<RefCell<Vec<ImageEvent>>>);
+struct ImageEvents(Arc<Mutex<Vec<ImageEvent>>>);
 
-fn image_info(image: &AeronImage) -> Option<ImageInfo> {
+impl ImageEvents {
+    fn lock(&self) -> MutexGuard<'_, Vec<ImageEvent>> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+fn image_info<S: ResourceStorage<bindings::aeron_image_t>>(image: &AeronImage<S>) -> Option<ImageInfo> {
     let c = image.get_constants().ok()?;
     Some(ImageInfo {
         correlation_id: c.correlation_id(),
@@ -213,15 +220,15 @@ fn image_info(image: &AeronImage) -> Option<ImageInfo> {
     })
 }
 
-fn registration_id(subscription: &AeronSubscription) -> i64 {
+fn registration_id<S: ResourceStorage<bindings::aeron_subscription_t>>(subscription: &AeronSubscription<S>) -> i64 {
     subscription.get_constants().map(|c| c.registration_id()).unwrap_or(-1)
 }
 
 impl AeronAvailableImageCallback for ImageEvents {
-    fn handle_aeron_on_available_image(&mut self, subscription: AeronSubscription, image: AeronImage) {
-        if let Some(info) = image_info(&image) {
-            self.0.borrow_mut().push(ImageEvent::Available {
-                subscription_id: registration_id(&subscription),
+    fn handle_aeron_on_available_image(&mut self, subscription: &AeronSubscriptionRef, image: &AeronImageRef) {
+        if let Some(info) = image_info(image) {
+            self.lock().push(ImageEvent::Available {
+                subscription_id: registration_id(subscription),
                 image: info,
             });
         }
@@ -229,10 +236,10 @@ impl AeronAvailableImageCallback for ImageEvents {
 }
 
 impl AeronUnavailableImageCallback for ImageEvents {
-    fn handle_aeron_on_unavailable_image(&mut self, subscription: AeronSubscription, image: AeronImage) {
+    fn handle_aeron_on_unavailable_image(&mut self, subscription: &AeronSubscriptionRef, image: &AeronImageRef) {
         let session_id = image.get_constants().map(|c| c.session_id()).unwrap_or(0);
-        self.0.borrow_mut().push(ImageEvent::Unavailable {
-            subscription_id: registration_id(&subscription),
+        self.lock().push(ImageEvent::Unavailable {
+            subscription_id: registration_id(subscription),
             session_id,
         });
     }
@@ -346,7 +353,7 @@ fn conclude_control_channel(channel: &str, session_id: i32) -> Result<String, St
 }
 
 /// The driver's counters, for the counters a request names.
-struct ReaderCounters<'a>(&'a AeronCountersReader);
+struct ReaderCounters<'a>(&'a AeronCountersReaderRef);
 
 /// Aeron's state of a counter in use.
 const RECORD_ALLOCATED: i32 = 1;
@@ -378,12 +385,11 @@ pub struct Archive {
     core: Conductor,
     ctx: ArchiveContext,
     aeron: Aeron,
-    counters_reader: AeronCountersReader,
     archive_dir: PathBuf,
     catalog_file: File,
     mark: ArchiveMarkFile,
     events: ImageEvents,
-    image_handler: Handler<ImageEvents>,
+    image_handler: SharedHandler<ImageEvents>,
     control: Vec<ControlSubscription>,
     sessions: HashMap<i64, SessionIo>,
     source_links: HashMap<i64, SourceLink>,
@@ -645,7 +651,7 @@ fn recover_catalog(
     opened
 }
 
-fn find_counter(counters: &AeronCountersReader, type_id: i32, key: &[u8]) -> bool {
+fn find_counter(counters: &AeronCountersReaderRef, type_id: i32, key: &[u8]) -> bool {
     let mut found = false;
     counters.foreach_counter_fn(|_value, _id, t, k, _label| {
         found |= t == type_id && k.starts_with(key);
@@ -665,9 +671,8 @@ impl Archive {
         aeron.start()?;
 
         let archive_id = ctx.archive_id.unwrap_or_else(|| aeron.next_correlation_id());
-        let counters_reader = aeron.counters_reader();
         if find_counter(
-            &counters_reader,
+            &aeron.counters_reader(),
             archive_counters::ARCHIVE_ERROR_COUNT_TYPE_ID,
             &archive_id.to_le_bytes(),
         ) {
@@ -729,7 +734,7 @@ impl Archive {
         };
 
         let events = ImageEvents::default();
-        let image_handler = Handler::new(events.clone());
+        let image_handler = SharedHandler::new_shared(events.clone());
         let mut channels = Vec::new();
         if let Some(channel) = &ctx.control_channel {
             let sparse = ctx.config.control.sparse;
@@ -776,7 +781,6 @@ impl Archive {
             core,
             ctx,
             aeron,
-            counters_reader,
             archive_dir,
             catalog_file,
             mark,
@@ -981,7 +985,7 @@ impl Archive {
 
     /// Images the client's conductor saw come and go since last asked.
     fn drain_image_events(&mut self) -> usize {
-        let events = std::mem::take(&mut *self.events.0.borrow_mut());
+        let events = std::mem::take(&mut *self.events.lock());
         let work = events.len();
         for event in events {
             match event {
@@ -1056,7 +1060,7 @@ impl Archive {
                     continue;
                 };
                 self.core
-                    .on_control_message(&image, &message, &ReaderCounters(&self.counters_reader));
+                    .on_control_message(&image, &message, &ReaderCounters(&self.aeron.counters_reader()));
                 self.execute_actions();
             }
         }
@@ -1434,7 +1438,7 @@ impl Archive {
             ReplayLimit::None => LimitCounter::None,
             ReplayLimit::Counter(id) => LimitCounter::Counter {
                 id,
-                registration_id: self.counters_reader.counter_registration_id(id).unwrap_or(-1),
+                registration_id: self.aeron.counters_reader().counter_registration_id(id).unwrap_or(-1),
             },
             ReplayLimit::Recording(recording_id) => {
                 match self.recorders.get(&recording_id).and_then(|r| r.counter_constants()) {
@@ -1548,13 +1552,9 @@ impl Archive {
         let mut stats = ReadStats::default();
         let mut started = Vec::new();
         let mut ended = Vec::new();
+        let counters = self.aeron.counters_reader();
         for (&id, replayer) in self.replayers.iter_mut() {
-            match replayer.poll(
-                self.cached_ms,
-                &self.counters_reader,
-                &mut self.replay_buffer,
-                &mut stats,
-            ) {
+            match replayer.poll(self.cached_ms, &counters, &mut self.replay_buffer, &mut stats) {
                 Replayed::Idle => {}
                 Replayed::Worked => work += 1,
                 Replayed::Started => started.push(id),
