@@ -13,6 +13,7 @@ members = [
     "rusteron-consensus-core",
     "rusteron-cluster-sim",
     "rusteron-cluster",
+    "rusteron-cluster-interop",
 ]
 exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
 resolver = "2"
