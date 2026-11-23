@@ -1,0 +1,10 @@
+rusteron-cluster-core
+
+This crate re-implements behaviour of Aeron Cluster
+(https://github.com/aeron-io/aeron), version 1.53.3, so as to interoperate
+with it on the wire and on disk:
+
+    Copyright 2014-2025 Real Logic Limited.
+    Licensed under the Apache License, Version 2.0.
+
+The crate is licensed under the Apache License, Version 2.0.
