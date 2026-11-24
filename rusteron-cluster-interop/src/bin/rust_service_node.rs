@@ -2,10 +2,12 @@
 //! consensus module:
 //!
 //! ```text
-//! rust_service_node AERON_DIR CLUSTER_DIR SERVICE_ID TRACE_PATH [silent]
+//! rust_service_node AERON_DIR CLUSTER_DIR SERVICE_ID TRACE_PATH [silent] [no-service-messages]
 //! ```
 //!
-//! `silent` answers no client. Exits 0 when the cluster terminated it, 1 when
+//! `silent` answers no client. `no-service-messages` sends none, for a
+//! cluster with a standby (rusteron-cluster-standby), which supports only
+//! such a service. Exits 0 when the cluster terminated it, 1 when
 //! it stopped for anything else, 2 when it could not start.
 
 use rusteron_cluster::{ContainerContext, Exit, ServiceContainer};
@@ -14,13 +16,17 @@ use rusteron_cluster_interop::TestService;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 5 {
-        eprintln!("usage: rust_service_node AERON_DIR CLUSTER_DIR SERVICE_ID TRACE_PATH [silent]");
+        eprintln!(
+            "usage: rust_service_node AERON_DIR CLUSTER_DIR SERVICE_ID TRACE_PATH [silent] [no-service-messages]"
+        );
         std::process::exit(2);
     }
     let mut ctx = ContainerContext::new(args[1].as_str(), args[2].as_str());
     ctx.config.service_id = args[3].parse().expect("a service id");
-    ctx.config.responding = args.get(5).map(String::as_str) != Some("silent");
+    let flags = &args[5..];
+    ctx.config.responding = !flags.iter().any(|f| f == "silent");
     let service = match TestService::new(&args[4]) {
+        Ok(service) if flags.iter().any(|f| f == "no-service-messages") => service.without_service_messages(),
         Ok(service) => service,
         Err(e) => {
             eprintln!("trace {}: {e}", args[4]);

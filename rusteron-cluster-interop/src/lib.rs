@@ -46,6 +46,7 @@ pub struct TestService {
     count: i64,
     hash: u64,
     loaded: Option<Rc<RefCell<Vec<u8>>>>,
+    service_messages: bool,
 }
 
 impl TestService {
@@ -56,7 +57,15 @@ impl TestService {
             count: 0,
             hash: 0,
             loaded: None,
+            service_messages: true,
         })
+    }
+
+    /// The service with no service messages, every 25th message's: the one a cluster standby can run, which
+    /// supports a service that sends none.
+    pub fn without_service_messages(mut self) -> Self {
+        self.service_messages = false;
+        self
     }
 
     pub fn count(&self) -> i64 {
@@ -140,7 +149,7 @@ impl ClusteredService for TestService {
             if self.count % 10 == 0 {
                 cx.schedule_timer(m.log_position * 2 + service_id, m.timestamp + 1);
             }
-            if self.count % 25 == 0 {
+            if self.service_messages && self.count % 25 == 0 {
                 let _ = cx.service_message(format!("svc{service_id}:{}", m.log_position).as_bytes());
             }
         }
