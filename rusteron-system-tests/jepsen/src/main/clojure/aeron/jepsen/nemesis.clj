@@ -67,7 +67,7 @@
     (deref p (+ timeout-ms 5000) nil)))
 
 (defn stale-leader!
-  "Seed 111's sequence (rusteron-cluster-sim), on the real cluster:
+  "Seed 111's sequence (the simulator in rusteron-system-tests), on the real cluster:
 
   1. The leader is cut off, then asked for a snapshot. It enters SNAPSHOT,
      which it cannot leave without a quorum: its inactive-quorum check runs
@@ -124,7 +124,7 @@
                    :after-heal (into {} (map (fn [node] [node (state test node)]) nodes))})))))))))
 
 (defn stale-election!
-  "Seed 641's sequence (rusteron-cluster-sim), on the real cluster: the
+  "Seed 641's sequence (the simulator in rusteron-system-tests), on the real cluster: the
   stale leader is one whose election never completed.
 
   1. The leader X is cut off. Once Y stands as candidate (Z votes at once),

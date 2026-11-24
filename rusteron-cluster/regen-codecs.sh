@@ -11,7 +11,7 @@ set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 SBE_TOOL_JAR=${SBE_TOOL_JAR:-$HOME/.m2/repository/uk/co/real-logic/sbe-tool/1.42.0/sbe-tool-1.42.0.jar}
 AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
-OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-cluster-codecs.XXXXXX")
+OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-cluster-codecs-gen.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 
 java --sun-misc-unsafe-memory-access=allow \

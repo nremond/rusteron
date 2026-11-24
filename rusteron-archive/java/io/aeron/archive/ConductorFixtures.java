@@ -36,7 +36,7 @@ import java.util.List;
 import static io.aeron.CommonContext.*;
 
 /**
- * Writes the fixtures of rusteron-archive-core's conductor tests with Aeron
+ * Writes the fixtures of rusteron-archive's conductor tests with Aeron
  * 1.54.2's own code, from this package for what is package-private:
  *
  * <ul>

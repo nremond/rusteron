@@ -1,11 +1,11 @@
 # Aeron Cluster in Rust: the consensus module
 
-The third milestone of Aeron Cluster in Rust (see `design.md` for the service container and `rusteron-archive/docs/design.md` for the archive): the consensus module, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23), as a sans-IO state machine driven by a shell on Aeron's C client. Where Java's election can lose committed entries, the module follows Raft's rules instead.
+The third milestone of Aeron Cluster in Rust (see `design.md` for the service container and `rusteron-archive/docs/server.md` for the archive): the consensus module, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23), as a sans-IO state machine driven by a shell on Aeron's C client. Where Java's election can lose committed entries, the module follows Raft's rules instead.
 
 | | |
 |---|---|
 | **Status** | M3, 2026-10-30. A node's consensus module in Rust, alone or among Java's: elections, replication, catch-up, sessions, timers, snapshots and termination. Every interop scenario passes on every mix of Rust and Java modules; Aeron's own `ClusterTest` passes every case in scope; the Jepsen suite's scenarios pass on Rust members; the deterministic simulator runs 480,000 seeds of faults without a failure, 140,000 of them with partitions that hold what they cut off; an application's engine commits on Rust modules at parity with Java's. Backups are answered and standbys' snapshots taken in and restarted from, as Java's open-source module does (§4): an application's standby runs beside Rust members through fault-injection runs, and spares them the snapshot pause as it does Java's (§6). |
-| **Code** | `rusteron-cluster` (the module: `module`, `module/election.rs`, `module/peers.rs`, `module/standby.rs`, sessions, timers, pending service messages, the module's snapshot, a testkit); `rusteron-cluster` (recording log, node state, mark file, counters); `rusteron-cluster` (the shell, binary `consensus_module`); `rusteron-system-tests` (the simulator); `rusteron-system-tests` (differential scenarios, the Jepsen suite, Aeron's own tests). |
+| **Code** | `rusteron-cluster`: `consensus_module_agent` (with `election`, `peers`, `standby_snapshot_replicator`, `ports`), `session_manager`, `timer_service`, `pending_service_message_tracker`, `consensus_module_snapshot_taker`, `log_publisher`, `consensus_adapter`, `ingress_adapter`, `service_proxy`, `cluster_member`, `recording_log`, `node_state_file`, `cluster_counters`, a testkit; the shell `consensus_module` (binary `consensus_module`); `rusteron-system-tests` (the simulator, differential scenarios, the Jepsen suite, Aeron's own tests). |
 | **Licence** | Apache-2.0 only, as Aeron: derived from its schemas and behaviour. |
 
 ---
@@ -26,9 +26,9 @@ Out of scope: taking and sending standby snapshots (a standby's work: Aeron Prem
 
 **The core** (`rusteron-cluster`, `forbid(unsafe_code)`) is Java's `ConsensusModuleAgent` and `Election` as one state machine. Time enters once per duty cycle; randomness comes from a seeded generator. Events go in (`on_consensus_fragment`, `on_ingress_fragment`, `on_log_fragment`, service and archive messages, `on_io` completions); the offers Java branches on at once go through a `Ports` trait; slower work leaves as `Action`s. Java's blocking waits are explicit states; its exceptions that restart an election are `Fault::Error`, or `Fault::Warning` where Java gives them the WARN category, its fatal ones `Fault::Terminate`.
 
-**The shell** (`rusteron-cluster::consensus`, binary `consensus_module`) runs it on one thread with the C client's conductor invoked there, as the service container's shell does, with Java's `ConsensusModule.Context` flags.
+**The shell** (`rusteron-cluster::consensus_module`, binary `consensus_module`) runs it on one thread with the C client's conductor invoked there, as the service container's shell does, with Java's `ConsensusModule.Context` flags.
 
-**The archive client session** (`rusteron-archive::session`) is the module's link to its archive, in the shell, the testkit and the simulator alike.
+**The archive client session** (`rusteron_archive::client::aeron_archive`) is the module's link to its archive, in the shell, the testkit and the simulator alike.
 
 ## 4. Choices, and why
 

@@ -1,8 +1,38 @@
 # rusteron-cluster
 
-Aeron Cluster's clustered service container on Aeron's C client: runs a Rust service against Aeron Cluster's consensus module, wire- and on-disk-compatible with Aeron 1.54.2. The archive can be Rust's (`rusteron-archive`). The consensus module is being rebuilt in Rust, with Java as the oracle: its core is `rusteron-cluster`, and its shell the `consensus_module` binary here, which runs a node of a cluster of any size, beside Java's nodes or Rust's.
+Aeron Cluster in Rust on Aeron's C client, wire- and on-disk-compatible with Aeron 1.54.2: the consensus module, the clustered service container, the cluster client and the cluster backup. Rust and Java nodes run in one cluster, on the same log, and their files on disk follow Java's formats.
 
-The container's logic is `rusteron-cluster`'s, a sans-IO state machine; this crate is its shell: one thread running the duty cycle and the Aeron client's conductor, the log up to the commit position, snapshots through the local archive, the mark file.
+The crate follows Aeron's `aeron-cluster` module: a module per Java class, named after it. Each is a sans-IO state machine (no clock, no randomness, no I/O), tested on its own and driven in virtual time by the simulator in `rusteron-system-tests`; where the class does I/O, the shell that drives it on the C client is beside it.
+
+| Aeron (`io.aeron.cluster`) | rusteron-cluster |
+|---|---|
+| `ConsensusModule`, its `Context` | `consensus_module` (the shell; the `consensus_module` binary), `consensus_module::context` |
+| `ConsensusModuleAgent` | `consensus_module_agent` (and `ports`: what it asks of its shell) |
+| `Election` | `consensus_module_agent::election` |
+| `StandbySnapshotReplicator` | `consensus_module_agent::standby_snapshot_replicator` |
+| `SessionManager`, `ClusterSession` | `session_manager` |
+| `PendingServiceMessageTracker` | `pending_service_message_tracker` |
+| `PriorityHeapTimerService` | `timer_service` |
+| `ClusterMember` | `cluster_member` |
+| `RecordingLog` | `recording_log` |
+| `NodeStateFile` | `node_state_file` |
+| `LogPublisher`, `LogAdapter` | `log_publisher` |
+| `ConsensusAdapter`, `ConsensusPublisher` | `consensus_adapter` |
+| `IngressAdapter` | `ingress_adapter` |
+| `ServiceProxy`, `ConsensusModuleAdapter` | `service_proxy` |
+| `ConsensusModuleSnapshotTaker`, `…Adapter` | `consensus_module_snapshot_taker` |
+| `ClusterControl` | `cluster_control` |
+| `ClusterBackup`, `ClusterBackupAgent` | `cluster_backup` (the shell; the `cluster_backup` binary), `cluster_backup_agent` |
+| `service.ClusteredServiceContainer`, `…Agent` | `service::clustered_service_container` (the shell), `service` |
+| `service.ClusteredService`, `Cluster` | `service::clustered_service` |
+| `service.ConsensusModuleProxy` | `service::consensus_module_proxy` |
+| `service.ServiceSnapshotTaker` | `service::service_snapshot_taker` |
+| `service.ClusterMarkFile` | `service::cluster_mark_file` |
+| `service.ClusterCounters` | `cluster_counters` |
+| `client.AeronCluster`, `AsyncConnect` | `client` (`aeron_cluster`, `async_connect`; on the C client, `client::io`) |
+| the SBE codecs | `codecs` |
+
+A service on the container:
 
 ```rust,no_run
 use rusteron_cluster::*;
@@ -14,9 +44,36 @@ fn run<S: ClusteredService>(service: S) -> Result<Exit, ContainerError> {
 }
 ```
 
-A service implements `ClusteredService`: it is handed the log's messages and timers, answers clients and schedules timers through `Cx`, and gives its snapshot as a `SnapshotSource` the container pulls without blocking.
+A service implements `ClusteredService`: it is handed the log's messages and timers, answers clients and schedules timers through `Cx`, and gives its snapshot as a `SnapshotSource` the container pulls without blocking. Its contract is Java's `ClusteredServiceAgent`'s: acknowledgements numbered from 0, the log applied never past the commit position, each message once and in order, a snapshot at exactly its request's position, the same bytes on the wire and in snapshots as Java writes. What it adds: nothing for the consensus module is dropped under back-pressure (a full queue holds the log instead), and a service may ask for a message again (`Apply::Retry`).
 
-What it guarantees, the tests behind it, and what is next: [docs/design.md](docs/design.md).
+The consensus module runs a member of a cluster of any size: recovery from its snapshot and log, the election (canvass, nomination, ballots, the leader's new term and replay, a follower's replication from the leader's archive, catch-up, joining the live log, truncation of a log ahead of the new leader), the leader's and the followers' duty cycles, the control toggle (suspend, resume, snapshot, shutdown, abort), its own snapshot, and termination across members. Each of Java's waits in place (for the archive, a recording's counter, the services' acks, a snapshot recorded) is a state its duty cycle checks.
+
+Design notes: the [service container](docs/design.md), the [consensus module](docs/consensus.md), the [client](docs/client.md) and the [backup](docs/backup.md).
+
+## Codecs
+
+`codecs` holds Aeron Cluster 1.54.2's SBE codecs, generated by sbe-tool 1.42.0 (the SBE version Aeron 1.54.2 uses) and checked in, so building needs no Java:
+
+| Module | Schema | What it encodes |
+|---|---|---|
+| `codecs::cluster` | `aeron-cluster-codecs.xml`, id 111, version 18 | Client sessions, the log, the consensus module and its services, snapshots |
+| `codecs::mark` | `aeron-cluster-mark-codecs.xml`, id 110, version 2 | The cluster mark files |
+| `codecs::node` | `aeron-cluster-node-state-codecs.xml`, id 112, version 10 | A consensus module's node state file |
+
+`./regen-codecs.sh` regenerates them from `schemas/` (it needs Java and the sbe-tool and aeron-all jars). The generated readers check only the buffer's length and panic when it is too short: code that decodes bytes it did not write checks lengths first (`codecs::message`).
+
+## Tests
+
+Each checks Rust against Aeron 1.54.2's own code or behaviour:
+
+- `tests/codecs_golden*.rs`, `tests/consensus_golden.rs`, `tests/client_codec.rs`: bytes Aeron's Java codecs wrote (`tests/fixtures`, from `java/GoldenCodecs.java`), decoded and encoded back to the same bytes.
+- `tests/consensus_files.rs`: a recording log written through Java's `RecordingLog`, recovery plans of real recordings on an embedded Java archive, node state files and counters (`fixtures.sh` runs `java/io/aeron/cluster/ConsensusFixtures.java`).
+- `tests/container.rs`: the container against the test kit (feature `testkit`): a log writer framing messages as Aeron's term appender does, and a fake consensus module holding acks to Java's rules. A property test applies logs of random messages, framed at random MTUs, committed a few at a time, with random retries: every message is applied once, in order, at its position.
+- `tests/node.rs`: a node in memory, on fake ports, a fake archive and fake services that ack as Java's container does. It leads, takes a snapshot, restarts from it and shuts down.
+- `tests/election.rs`: one member of three, the test playing the other two: the scenarios of Java's `ElectionTest` and `ConsensusModuleAgentTest` a plain cluster meets.
+- `tests/backup.rs`, `tests/standby.rs`, `tests/client.rs`: the backup, standby snapshot notices, and the client.
+
+The scenarios beside Java's nodes, Jepsen and the simulator are in `rusteron-system-tests`.
 
 ## Build
 
@@ -24,4 +81,4 @@ Aeron C is built from source, which needs CMake and, for its Gradle, a JDK older
 
 ## Licence
 
-Apache-2.0: see `NOTICE`.
+Apache-2.0, as Aeron: see `NOTICE`.

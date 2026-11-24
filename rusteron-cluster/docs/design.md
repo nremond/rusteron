@@ -5,7 +5,7 @@ Aeron Cluster re-implemented in Rust, in this fork of rusteron, wire- and on-dis
 | | |
 |---|---|
 | **Status** | M1 done, 2026-10-27. A Rust service runs in a Rust container beside a Java service on a Java 1.53.3 consensus module and archive, over Aeron's C media driver: started, joined, snapshotted, restarted from its snapshot, through a leader's failover, terminated. Every scenario's traces match the Java twin's line for line, and the container's part of every snapshot is Java's bytes; the six scenarios passed 20 times in a row, 120 runs, none failed, on macOS (arm64) and on Linux (x86_64) (§5). Measured on 2026-10-28, one node: the Rust container is at parity with Java's, applying the log 1.0–1.4 µs after append at p50 and answering a client in 9.2–9.9 µs round trip at p50, with p99.99 and maxima mostly shorter (§6). |
-| **Code** | `rusteron-cluster` (Aeron's SBE codecs, generated, checked against Java's bytes), `rusteron-cluster` (the container as a sans-IO state machine: `service`, plus `log`, `position`, `counters`, `markfile`, and a `testkit`), `rusteron-cluster` (the shell: `container.rs`, `markfile.rs`), `rusteron-system-tests` (the Rust test service, `rust_service_node`, the Java side, `scripts/`) |
+| **Code** | `rusteron-cluster`: `service` (the container as a sans-IO state machine, with `clustered_service`, `consensus_module_proxy`, `service_snapshot_taker`), `cluster_counters`, `service::cluster_mark_file` and a `testkit`; the shell `service::clustered_service_container` and `service::cluster_mark_file::io`; the SBE codecs in `codecs`, generated, checked against Java's bytes. `rusteron-system-tests` (the Rust test service, `rust_service_node`, the Java side, `scripts/`). |
 | **Plan** | Re-implement Aeron Cluster one piece at a time, each replacing its Java twin inside a working Java cluster, Java the oracle at every step: M0 foundations, M1 service container (this), M2 archive server, M3 consensus module, M4 cluster client, M5 the cluster backup and a node with no JVM, M6 operations. |
 | **Licence** | The four crates are Apache-2.0 only, as Aeron is: they are derived from its schemas and behaviour (`NOTICE` in each). rusteron's own crates stay MIT OR Apache-2.0. |
 
@@ -37,7 +37,7 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 ## 3. The design
 
 ```text
-                 rusteron-cluster (shell, one thread)                rusteron-cluster (sans-IO)
+                 clustered_service_container (shell, one thread)     service (sans-IO)
  C media driver ◄─ Aeron C client (conductor invoked on this thread)
    stream 104 ────► poll ─────────────────────────────► on_cm_message, after_cm_poll
    log image  ────► bounded_controlled_poll ──────────► on_log_fragment ─► ClusteredService
@@ -75,7 +75,7 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 
 ## 5. Tests
 
-**Codecs** (`rusteron-cluster/tests/golden.rs`, 18 tests): every message the container reads or writes, and the mark file's header, written by Aeron 1.54.2's own Java codecs (`java/GoldenCodecs.java`), decodes in Rust to the values Java set and encodes back to the same bytes. A field new in version 17 reads as unset from an older message.
+**Codecs** (`rusteron-cluster/tests/codecs_golden.rs`, 18 tests): every message the container reads or writes, and the mark file's header, written by Aeron 1.54.2's own Java codecs (`java/GoldenCodecs.java`), decodes in Rust to the values Java set and encodes back to the same bytes. A field new in version 17 reads as unset from an older message.
 
 **The core** (`rusteron-cluster`, 22 unit tests, 11 container tests) against the testkit: a log writer that frames messages as a publication does, the consensus module's messages, a fake consensus module holding acks to Java's rule. A whole life through a snapshot and termination; a restart from that snapshot; a snapshot cut short; a refused join tried again; 1,000 timers under refusals arriving in order; a full queue holding the log; an answer offered in the poll that applied its message; a refused answer offered again, in its place, with the session's next answers behind it; a follower's egress mocked; the log ended at the next join. A property test (200 cases): logs of random messages up to 6,000 bytes, framed at MTUs of 1,408 to 8,192, committed a few at a time, polled a few fragments at a time, with random retries: each message applied once, in order, at the position after its last frame, and what a refused delivery sent discarded.
 
@@ -184,7 +184,7 @@ Not measured here: replication. On one node the commit is the local archive reco
 1. **An application's engine as a service**: its state machine behind `ClusteredService`, its snapshotter behind `channel_source`, `Apply::Retry` onto its ring, on the Java consensus module first: done, 2026-10-28.
 2. **The archive's async proxy** in the shell, so a snapshot's connect, replay and record never hold the duty cycle.
 3. **Three nodes across machines**, once the engine runs: the container's figures here are a node's, and replication is where a commit's time goes.
-4. **M2, the archive server**, the cluster's subset: done, 2026-10-29; `rusteron-archive/docs/design.md`.
+4. **M2, the archive server**, the cluster's subset: done, 2026-10-29; `rusteron-archive/docs/server.md`.
 5. **M3, the consensus module**, among Java nodes, then alone; and the simulator: the cores in virtual time, Aeron's streams modelled at the positions they show: done, 2026-10-30; `consensus.md`.
 6. **M4, the cluster client**, Java's `AeronCluster` in Rust, measured against Java's: done, 2026-10-31; `client.md`.
 7. **M5, no JVM anywhere**: Java's `ClusterBackup` in Rust (`backup.md`), so that a cluster, its clients and a standby run on the fork's pieces alone, Java's tools the oracle: done, 2026-11-02.
@@ -196,7 +196,7 @@ Building Aeron C needs CMake, and a JDK older than 27 for Aeron's Gradle (25 wor
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 BUILD_JAVA_HOME=$JAVA_HOME
-cargo test -p rusteron-cluster -p rusteron-cluster -p rusteron-cluster
+cargo test -p rusteron-cluster
 cargo build -p rusteron-driver --bin media_driver --features static
 cargo build -p rusteron-system-tests --features static
 SCENARIO=failover rusteron-system-tests/scripts/differential.sh 3 1000

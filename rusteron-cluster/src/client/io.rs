@@ -20,7 +20,7 @@
 //! # Ok(()) }
 //! ```
 //!
-//! The session's logic is `rusteron-cluster-core`'s ([`crate::client`]);
+//! The session's logic is the sans-IO [`crate::client`];
 //! this module gives it Aeron: publications and subscriptions added
 //! asynchronously, messages reassembled per image, images seen to go.
 

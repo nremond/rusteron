@@ -1,4 +1,4 @@
-# rusteron-system-tests
+# The cluster simulator
 
 A deterministic simulator of an Aeron Cluster whose every member runs the Rust consensus module (`rusteron-cluster`). The members, their archives, their services and a client run on one thread in virtual time; a seed sets everything, and the same seed replays the same run.
 
@@ -100,7 +100,7 @@ The module does the last. With it, seeds 0..200,000, 20,000 with faults for 60 s
 
 A fault injector across zones cut the leader off for 2 to 5 s. In 20 of 23 such partitions on Rust members, a second election followed 0.7 to 2.2 s after the links came back. Aeron's streams held what the others sent during the cut, their finished election among it, and the member cut off got it late. Its log ahead, it refused their candidate's vote but took the term; their stale canvass positions then made it a quorum candidate, and its vote request for the term after sent the leader and its follower into an election. The simulator lost what a cut carried, so it never showed what late messages do after a heal.
 
-`leader_partitioned` stages it (its tests in `tests/seeds.rs`): no random faults; the leader of a steady cluster is cut off from both others for a given time, then the links heal and the cluster settles. The module now holds a member back a canvass round after it takes a term by refusing a vote, and has a member in Nominate follow a leader of its term as one in Canvass does (`rusteron-cluster/docs/consensus.md` §4). Over seeds 0..100, cuts of 2.0, 3.6 and 4.9 s, held and lost links:
+`leader_partitioned` stages it (its tests in `tests/sim_seeds.rs`): no random faults; the leader of a steady cluster is cut off from both others for a given time, then the links heal and the cluster settles. The module now holds a member back a canvass round after it takes a term by refusing a vote, and has a member in Nominate follow a leader of its term as one in Canvass does (`rusteron-cluster/docs/consensus.md` §4). Over seeds 0..100, cuts of 2.0, 3.6 and 4.9 s, held and lost links:
 
 - the others elected another leader in 595 of 600 runs, and it kept its term after the heal in every one, where 250 lost it before;
 - a held cut of 1.5 s, too short to replace the leader, elects within 5 s of the heal: a median of 198 ms, against 165 ms before.

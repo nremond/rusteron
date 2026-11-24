@@ -10,7 +10,7 @@ set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 AERON_ALL_JAR=${AERON_ALL_JAR:-$HOME/.m2/repository/io/aeron/aeron-all/1.54.2/aeron-all-1.54.2.jar}
-OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-cluster-core.XXXXXX")
+OUT=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-cluster-fixtures.XXXXXX")
 trap 'rm -rf "$OUT"' EXIT
 
 javac -cp "$AERON_ALL_JAR" -d "$OUT" "$HERE"/java/io/aeron/cluster/*.java

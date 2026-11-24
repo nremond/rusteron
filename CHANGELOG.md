@@ -6,18 +6,19 @@ Early history predating the available release tags is grouped separately.
 
 ## Unreleased: Aeron Cluster in Rust (this fork's `cluster` branch)
 
-On 0.3.2, with Aeron C 1.54.2. The existing crates are unchanged. All of these crates are
+On 0.3.2, with Aeron C 1.54.2. Laid out as Aeron's modules, each module a Java class; all of it
 wire- and on-disk-compatible with Aeron 1.54.2.
 
-- Added the Aeron Cluster crates:
-  - the service container and the consensus module as sans-IO cores (`rusteron-cluster`,
-    `rusteron-cluster`);
-  - their shells on Aeron's C client, with the cluster client and backup (`rusteron-cluster`);
-  - their SBE codecs (`rusteron-cluster`).
-- Added Aeron Archive's server for what a cluster asks of its archive (`rusteron-archive`),
-  its sans-IO core (`rusteron-archive`) and its SBE codecs (`rusteron-archive`).
-- Added a deterministic simulator (`rusteron-system-tests`) and tests beside Java Aeron Cluster
-  1.54.2 (`rusteron-system-tests`). Neither is published.
+- Added Aeron Cluster in Rust (`rusteron-cluster`): the consensus module, the clustered service
+  container, the cluster client and the cluster backup, as sans-IO state machines with their shells
+  on Aeron's C client, and the cluster's SBE codecs.
+- Added Aeron Archive's server in Rust to `rusteron-archive`, behind the `server` feature: what a
+  cluster asks of its archive, its SBE codecs, and the `aeron_archive` binary. The crate's licence is
+  now "(MIT OR Apache-2.0) AND Apache-2.0": the server is Apache-2.0 only, as Aeron.
+- Added `rusteron-system-tests`: scenarios beside Java Aeron 1.54.2, Jepsen, and a deterministic
+  simulator of a cluster. Not published.
+- Breaking: `rusteron-media-driver` is now `rusteron-driver`, and `rusteron-docker-samples` is
+  `rusteron-samples`, as Aeron's `aeron-driver` and `aeron-samples`.
 - Valgrind runs only on the crates that call Aeron C.
 
 ## 0.3.2

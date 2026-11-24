@@ -38,7 +38,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Writes the fixtures of rusteron-archive-core's catalog tests with Aeron
+ * Writes the fixtures of rusteron-archive's catalog tests with Aeron
  * 1.54.2's own {@code Catalog}, which is package-private: hence this package.
  *
  * <ul>

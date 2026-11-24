@@ -5,7 +5,7 @@ The fourth milestone of Aeron Cluster in Rust (see `design.md` for the service c
 | | |
 |---|---|
 | **Status** | M4, 2026-10-31. A Rust `AeronCluster`: the connect, redirects, challenges, offers, keepalives, admin requests, the egress and its session events, a new leader followed, the session closed. Every interop scenario passes with it on Java's modules, Rust's and mixes; Aeron's own client cases pass on both module kinds, the authentication ones on Java's only (§5). The simulator's client is the real one, and 22,000 seeds of faults pass. An application's bench on it measures at parity with Java's client (§6). Its tests found two faults in the Rust consensus module, both fixed. |
-| **Code** | `rusteron-cluster::client` (the client: `connect.rs`, `session.rs`, `codec.rs`, the `ClientPorts` trait); `rusteron-cluster::client` (the shell: `AeronCluster`, `AsyncConnect`); `rusteron-system-tests` (the simulator's client on the core); `rusteron-system-tests` (`echo_client`, `bench_client`, `client_lines`; `RustClientTest` in `aeron-tests`). |
+| **Code** | `rusteron-cluster::client` (`async_connect`, `aeron_cluster`, `codec`, the `ClientPorts` trait), and on the C client `client::io` (`AeronCluster`, `AsyncConnect`); `rusteron-system-tests` (the simulator's client; `echo_client`, `bench_client`, `client_lines`; `RustClientTest` in `aeron-tests`). |
 | **Licence** | Apache-2.0 only, as Aeron: derived from its schemas and behaviour. |
 
 ---
@@ -29,7 +29,7 @@ Out of scope: `tryClaim` (offers copy), the extension listeners for other schema
 
 **The core** (`rusteron-cluster::client`, `forbid(unsafe_code)`): `Connect` is `AsyncConnect` step by step, `poll` returning the connected `Client` once done; `Client` is the connected `AeronCluster`. Both reach Aeron through the `ClientPorts` trait: asynchronous adds and removes, offers of parts, a controlled poll that hands over whole messages with their image, whether an image went, the clock, correlation ids. The codecs are written by hand and check every length, against Java's bytes (Challenge's fixture added to the golden ones).
 
-**The shell** (`rusteron-cluster::client`): `AeronCluster::connect` blocks on the core with Java's backoff; `async_connect` returns an `AsyncConnect` the caller polls. It reassembles egress fragments per image and learns of lost images from the C client's callbacks. Its Aeron client is the caller's or its own, run by a conductor thread or, with `use_conductor_agent_invoker`, from its polls; `ClientIdle` picks spinning or Java's backoff.
+**The shell** (`rusteron-cluster::client::io`): `AeronCluster::connect` blocks on the core with Java's backoff; `async_connect` returns an `AsyncConnect` the caller polls. It reassembles egress fragments per image and learns of lost images from the C client's callbacks. Its Aeron client is the caller's or its own, run by a conductor thread or, with `use_conductor_agent_invoker`, from its polls; `ClientIdle` picks spinning or Java's backoff.
 
 **The simulator** (`rusteron-system-tests`) implements `ClientPorts` on its message-level network: a publication ready a step after it is added, an image per member incarnation. Its application sends tagged commands, keeps an idle session alive, and connects again when the session closes or its messages go unanswered for 3 s, so every seed runs the real client through crashes, partitions and elections.
 

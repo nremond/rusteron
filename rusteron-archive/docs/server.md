@@ -5,8 +5,8 @@ Aeron Archive's server re-implemented in Rust, wire- and on-disk-compatible with
 | | |
 |---|---|
 | **Status** | M2 done, 2026-10-29. Java 1.53.3 clusters run on it: rusteron's six interop scenarios with the Rust archive under every node (started, snapshotted, restarted from disk, three nodes through a failover), and an application's parity check (a Rust and a Java engine on one log, event logs, snapshots, a leader killed and back). Aeron's own C archive-client tests pass 58 of 74 against it, the other 16 using what it does not serve. Java's `ArchiveTool verify` passes on what it writes; it reads Java's catalogs and Java reads its. Measured under an application's three-node cluster on 2026-10-29: at parity with Java's archive in every configuration, 24 µs at the median at one command in flight, the same with either (§6). |
-| **Code** | `rusteron-archive` (Aeron Archive's SBE codecs, generated, checked against Java's bytes), `rusteron-archive` (the archive as a sans-IO state machine: `conductor`, `catalog`, `segments`, `replay`, `channel`, `counters`, `protocol`, `client`, and a `testkit`), `rusteron-archive` (the shell: `lib.rs`, `recorder.rs`, `replayer.rs`, `markfile.rs`, `counters.rs`; the `aeron_archive` binary; `interop.sh`, `aeron-tests/`) |
-| **Licence** | The three crates are Apache-2.0 only, as Aeron is (`NOTICE` in each). |
+| **Code** | `rusteron-archive`, its modules named after Aeron's classes: sans-IO, `archive_conductor`, `catalog`, `segments`, `replay_session`, `channel_uri`, `archive_counters`, `control_session_adapter`, `archive_tool`, `client` and a `testkit`; with the `server` feature, `archive`, `recording_writer`, `replay_session::io`, `archive_mark_file`, `archive_counters::io` and the `aeron_archive` binary; the SBE codecs in `codecs`, generated, checked against Java's bytes. The scenarios: `rusteron-system-tests/archive` (`interop.sh`, `aeron-tests/`). |
+| **Licence** | The server's files are Apache-2.0 only, as Aeron is (`NOTICE`). |
 
 ---
 
@@ -27,7 +27,7 @@ What a cluster asks of its archive, read from the 1.53.3 sources, and what this 
 | Catalog | `archive.catalog` as Java writes it: a 32-byte header (version 3.1.0, entries aligned to 64), each entry a 32-byte header and the `RecordingDescriptor` with its three strings, padded; grown by half again when full; a deleted entry kept, out of the index; written back range by range, synced as `catalogFileSyncLevel` says. |
 | Segments | `<recording>-<base>.rec`, bases counted from the start position's term base; a padding frame written as its header alone, the rest a hole; a full segment ends at its length and the next file is created; synced after each write as `fileSyncLevel` says (1: data, 2: data and metadata). After a crash, a recording left without a stop position gets it back from its last segment, as Java's `Catalog` does it, a last frame straddling a half-written page refused. With `--truncate-torn-fragments`, such a frame is cut off instead, as Java's `ArchiveTool verify` cuts it when told to: the file keeps its length, the frame and what follows zeros, the recording stopped before it. A node with no JVM has no `ArchiveTool` to run before its archive starts. With `--verify`, every recording is checked first as the tool checks it without options, as a Java node has it done before its archive starts: its positions against the catalog's invariants and its last segment file, and that file's frame headers from where the recording starts. A damaged recording is marked invalid, and the archive lists it no more; a whole one's stop position is set where its frames end; an invalid one found whole is valid again. Two departures, where Java's archive itself reads the file otherwise: a last segment file left unsized by a crash (empty) holds frames to its end, where the tool fails to read a header in it and marks the whole recording invalid; and a frame of any length is read, where the tool throws on one longer than its 1 MiB buffer and verifies nothing more. The recovery runs on a thread of its own while the archive's Aeron client is kept alive: reading and syncing a large segment on a busy disk can outlast the client's 10 s, which then closes, as it did once in fault-injection runs. |
 | Counters | The recording position (type 100) with Java's key and label (`rec-pos: <recording> <session> <stream> <channel>`), as the consensus module finds it; it moves only after the write and its sync. The archive's own (types 101–113): errors, control sessions, cycle time, recorder and replayer bytes and times, session counts. |
-| Mark file | `archive-mark.dat` (schema 100, version 2): the header in the first 8 KiB, Agrona's distinct error log after it, the activity timestamp every second, the version written last. A live one is not started over: one whose writer holds `archive-mark.lck` beside it, or, with no lock naming its writer (Java's archive takes none), one active within 10 s (`rusteron-cluster::markfile::owner`). An archive killed is proven gone by its released lock, and is replaced at once. |
+| Mark file | `archive-mark.dat` (schema 100, version 2): the header in the first 8 KiB, Agrona's distinct error log after it, the activity timestamp every second, the version written last. A live one is not started over: one whose writer holds `archive-mark.lck` beside it, or, with no lock naming its writer (Java's archive takes none), one active within 10 s (`rusteron_archive::mark_file::owner`). An archive killed is proven gone by its released lock, and is replaced at once. |
 | Replication | As a client of the source archive: connect, archive id, the descriptor, a new copy (or an empty one replaced, or an existing one extended), the source asked to replay on the replication channel with the copy's session id, recorded until the source's stop (SYNC) or the position asked, then REPLICATE_END and STOP. Credentials passed on. |
 
 Out: an authenticator and its challenge, response-channel control mode, checksums, recording events (templates 101–103, off everywhere), DEDICATED threading, catalog migration from older versions, live merge.
@@ -35,7 +35,7 @@ Out: an authenticator and its challenge, response-channel control mode, checksum
 ## 3. The design
 
 ```text
-                 rusteron-archive (shell, one thread)        rusteron-archive (sans-IO)
+                 archive (shell, one thread)                 archive_conductor (sans-IO)
  C media driver ◄─ Aeron C client (conductor invoked on this thread)
    control   ─────► poll, reassembled ─────────────────────► on_control_message ─► control sessions
    responses ◄───── offer ◄─────────────────────────────── do_work(ResponseChannels), queued under back pressure
@@ -47,11 +47,11 @@ Out: an authenticator and its challenge, response-channel control mode, checksum
    actions   ◄───── execute_actions ◄─────────────────────── poll_action (add publication, start recording, …)
 ```
 
-**The core** (`rusteron-archive::conductor::Conductor`) is Java's `ArchiveConductor` in SHARED mode: the control sessions and their queues, every request's checks in Java's order, the catalog, the recordings' lifecycle (the duplicate key, auto-stop, the extension checked once its image is acknowledged), the replays' admission and ids (`replay id << 32 | session id`), deletes deferred until a truncated recording's replays stop, and each replication's state machine (link, connect, descriptor, extend or create, replay, await the image, record, done). It reads no clock: time enters through `on_tick`. It does no I/O: it asks for it through `Action`s (add a publication or a subscription, start a recording on an image, start a replay, list a recording's files, cut a segment, delete a file, connect to a source archive) and learns the outcome through `on_io`. The catalog is an image of the file in memory; the core records which ranges a change dirtied, and the shell writes them back.
+**The core** (`archive_conductor::Conductor`) is Java's `ArchiveConductor` in SHARED mode: the control sessions and their queues, every request's checks in Java's order, the catalog, the recordings' lifecycle (the duplicate key, auto-stop, the extension checked once its image is acknowledged), the replays' admission and ids (`replay id << 32 | session id`), deletes deferred until a truncated recording's replays stop, and each replication's state machine (link, connect, descriptor, extend or create, replay, await the image, record, done). It reads no clock: time enters through `on_tick`. It does no I/O: it asks for it through `Action`s (add a publication or a subscription, start a recording on an image, start a replay, list a recording's files, cut a segment, delete a file, connect to a source archive) and learns the outcome through `on_io`. The catalog is an image of the file in memory; the core records which ranges a change dirtied, and the shell writes them back.
 
-**The replay** (`rusteron-archive::replay::ReplaySession`) is Java's `ReplaySession` without its I/O: the segment file and offset to read next, the frame at the start position checked, reads that never cross a term, a read's data frames stamped with the replay's session and stream and offered as one block, padding appended after them, a limit counter followed while the recording grows. The shell's `Replayer` does the reads (`pread`) and the offers (`offer_block`, `append_padding`).
+**The replay** (`replay_session::ReplaySession`) is Java's `ReplaySession` without its I/O: the segment file and offset to read next, the frame at the start position checked, reads that never cross a term, a read's data frames stamped with the replay's session and stream and offered as one block, padding appended after them, a limit counter followed while the recording grows. The shell's `Replayer` does the reads (`pread`) and the offers (`offer_block`, `append_padding`).
 
-**The shell** (`rusteron-archive::Archive`) runs one thread, the Aeron client's conductor invoked on it every millisecond as M1's container does. Each duty cycle: the clock read once; every millisecond the client's conductor, the mark file and the gauges; image events; the control subscriptions; the source archives' answers; the core's sessions; its actions; the replayers; the recorders; the catalog's dirty ranges. The recorder takes one block an image offers (up to `fileIoMaxLength`), writes it where the segment arithmetic places it, syncs it when asked, and only then moves the position counter: the durability boundary a synced cluster's commit rests on.
+**The shell** (`archive::Archive`) runs one thread, the Aeron client's conductor invoked on it every millisecond as M1's container does. Each duty cycle: the clock read once; every millisecond the client's conductor, the mark file and the gauges; image events; the control subscriptions; the source archives' answers; the core's sessions; its actions; the replayers; the recorders; the catalog's dirty ranges. The recorder takes one block an image offers (up to `fileIoMaxLength`), writes it where the segment arithmetic places it, syncs it when asked, and only then moves the position counter: the durability boundary a synced cluster's commit rests on.
 
 ## 4. Choices, and why
 
@@ -71,7 +71,7 @@ Out: an authenticator and its challenge, response-channel control mode, checksum
 
 ## 5. Tests
 
-**Codecs** (`rusteron-archive/tests/golden.rs`, 11 tests): every request the archive reads, written by Java's own codecs, decodes to Java's values; every message it writes (control response, recording signal, ping, recording descriptor, the catalog's header and entry, the mark file's header) encodes to Java's bytes.
+**Codecs** (`rusteron-archive/tests/codecs_golden.rs`, 11 tests): every request the archive reads, written by Java's own codecs, decodes to Java's values; every message it writes (control response, recording signal, ping, recording descriptor, the catalog's header and entry, the mark file's header) encodes to Java's bytes.
 
 **The core** (`rusteron-archive`, 64 tests). Against Java's own code, run by `fixtures.sh`: the catalog's operations replayed write Java's file byte for byte, grown alike; `replaceRecording` for a longer and a shorter entry; the stop positions recovered from eight sets of segment files, page straddles included, and the files and stop positions Java leaves when told to truncate them; `ArchiveTool verify`'s verdicts on 18 recordings (whole, active, stopped short or long, damaged in each of the eight ways the tool reports, invalid, deleted, torn, with an empty last segment): the same damage in the tool's words, the same stop positions, and an archive started with `--verify` leaving the catalog as the tool leaves it, the torn segment truncated alike, but for the empty segment, valid where the tool marks it invalid; Java's channel handling for 33 channels (the stripped channel, the duplicate key, the response channel, the replay channel) and its counters' keys and labels. On the testkit (a fake Aeron: control images, publications as buffers, a fake source archive answering from its own catalog): 30 conductor tests following Java's behaviour step by step (connect and timeouts, every request's checks and errors, signals and their order, auto-stop, extension checks, truncation and purge with deferred deletes, four replication paths), 6 replay-session tests.
 
@@ -133,7 +133,7 @@ Not measured: replay and replication speed (a follower catching up, a snapshot l
 On Linux with Aeron C's build dependencies (the container's §9):
 
 ```bash
-cargo test -p rusteron-archive -p rusteron-archive -p rusteron-archive
+cargo test -p rusteron-archive --features server
 ```
 
 ```bash
@@ -141,11 +141,11 @@ cargo build --release -p rusteron-archive --features static,server
 ```
 
 ```bash
-rusteron-archive/interop.sh
+rusteron-system-tests/archive/interop.sh
 ```
 
 ```bash
-rusteron-archive/aeron-tests/run.sh
+rusteron-system-tests/archive/aeron-tests/run.sh
 ```
 
 ```bash
