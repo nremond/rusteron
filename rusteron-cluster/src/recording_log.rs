@@ -115,7 +115,7 @@ impl Entry {
     }
 
     /// The bytes Java writes for it: `length()` of them, the padding zero.
-    fn encode(&self) -> Vec<u8> {
+    pub(crate) fn encode(&self) -> Vec<u8> {
         let mut bytes = vec![0; self.length()];
         put_i64(&mut bytes, RECORDING_ID_OFFSET, self.recording_id);
         put_i64(&mut bytes, LEADERSHIP_TERM_ID_OFFSET, self.leadership_term_id);
@@ -320,6 +320,129 @@ impl std::fmt::Display for RecoveryPlan {
             Some(log) => write!(f, "{log}]"),
             None => f.write_str("null]"),
         }
+    }
+}
+
+/// As Java's `RecordingLog.toString`, which ClusterTool's `recording-log`
+/// prints: the entries, then the valid terms' indexes in the order Agrona's
+/// `Long2LongHashMap` iterates them, filled as Java fills it on loading.
+impl std::fmt::Display for RecordingLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let entries: Vec<String> = self.entries.iter().map(Entry::to_string).collect();
+        let mut by_index: Vec<(i64, usize)> = self.term_index.iter().map(|(&term, &i)| (term, i)).collect();
+        by_index.sort_by_key(|&(_, i)| i);
+        let mut map = Long2LongHashMap::new(NULL_VALUE);
+        for (term, i) in by_index {
+            map.put(term, i as i64);
+        }
+        write!(
+            f,
+            "RecordingLog{{entries=[{}], cacheIndex={}}}",
+            entries.join(", "),
+            map
+        )
+    }
+}
+
+/// Agrona's `Long2LongHashMap`, as far as its `toString` shows: open
+/// addressing over key-value pairs, `Hashing.evenHash`, a load factor of
+/// 0.65, growth by doubling, and iteration from the end of the table back.
+struct Long2LongHashMap {
+    entries: Vec<i64>,
+    missing_value: i64,
+    resize_threshold: usize,
+    size: usize,
+}
+
+impl Long2LongHashMap {
+    const MIN_CAPACITY: usize = 8;
+    const LOAD_FACTOR: f32 = 0.65;
+
+    fn new(missing_value: i64) -> Self {
+        let mut map = Self {
+            entries: Vec::new(),
+            missing_value,
+            resize_threshold: 0,
+            size: 0,
+        };
+        map.capacity(Self::MIN_CAPACITY);
+        map
+    }
+
+    fn capacity(&mut self, capacity: usize) {
+        self.resize_threshold = (capacity as f32 * Self::LOAD_FACTOR) as usize;
+        self.entries = vec![self.missing_value; capacity * 2];
+        self.size = 0;
+    }
+
+    fn even_hash(key: i64, mask: usize) -> usize {
+        let h = (key as i32) ^ ((key as u64 >> 32) as i32);
+        let hash = h.wrapping_shl(1).wrapping_sub(h.wrapping_shl(8));
+        (hash as u32 as usize) & mask
+    }
+
+    fn put(&mut self, key: i64, value: i64) {
+        let mask = self.entries.len() - 1;
+        let mut index = Self::even_hash(key, mask);
+        while self.entries[index + 1] != self.missing_value {
+            if self.entries[index] == key {
+                break;
+            }
+            index = (index + 2) & mask;
+        }
+        if self.entries[index + 1] == self.missing_value {
+            self.size += 1;
+            self.entries[index] = key;
+        }
+        self.entries[index + 1] = value;
+        if self.size > self.resize_threshold {
+            self.rehash(self.entries.len());
+        }
+    }
+
+    fn rehash(&mut self, capacity: usize) {
+        let old = std::mem::take(&mut self.entries);
+        self.capacity(capacity);
+        let mask = self.entries.len() - 1;
+        for pair in old.chunks(2) {
+            if pair[1] != self.missing_value {
+                let mut index = Self::even_hash(pair[0], mask);
+                while self.entries[index + 1] != self.missing_value {
+                    index = (index + 2) & mask;
+                }
+                self.entries[index] = pair[0];
+                self.entries[index + 1] = pair[1];
+                self.size += 1;
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for Long2LongHashMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.size == 0 {
+            return f.write_str("{}");
+        }
+        // AbstractIterator.reset: start after the first free slot when the last is taken.
+        let length = self.entries.len();
+        let mask = length - 1;
+        let mut stop = length;
+        if self.entries[length - 1] != self.missing_value {
+            stop = (0..length)
+                .step_by(2)
+                .find(|&i| self.entries[i + 1] == self.missing_value)
+                .unwrap_or(length);
+        }
+        let mut pairs = Vec::with_capacity(self.size);
+        let mut i = stop + length;
+        while pairs.len() < self.size && i >= stop + 2 {
+            i -= 2;
+            let index = i & mask;
+            if self.entries[index + 1] != self.missing_value {
+                pairs.push(format!("{}={}", self.entries[index], self.entries[index + 1]));
+            }
+        }
+        write!(f, "{{{}}}", pairs.join(", "))
     }
 }
 

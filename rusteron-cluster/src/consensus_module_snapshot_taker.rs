@@ -197,6 +197,7 @@ pub enum Loaded {
         next_session_id: i64,
         next_service_session_id: i64,
         log_service_session_id: i64,
+        pending_message_capacity: i32,
     },
     ClusterSession {
         cluster_session_id: i64,
@@ -214,6 +215,7 @@ pub enum Loaded {
     PendingMessageTracker {
         next_service_session_id: i64,
         log_service_session_id: i64,
+        pending_message_capacity: i32,
         service_id: i32,
     },
     PendingMessage {
@@ -312,6 +314,7 @@ impl Loader {
                     next_session_id: d.next_session_id(),
                     next_service_session_id: d.next_service_session_id().unwrap_or(i64::MIN),
                     log_service_session_id: d.log_service_session_id().unwrap_or(i64::MIN),
+                    pending_message_capacity: d.pending_message_capacity().unwrap_or(0),
                 }
             }
             pending_message_tracker_codec::SBE_TEMPLATE_ID => {
@@ -320,6 +323,7 @@ impl Loader {
                 Loaded::PendingMessageTracker {
                     next_service_session_id: d.next_service_session_id(),
                     log_service_session_id: d.log_service_session_id(),
+                    pending_message_capacity: d.pending_message_capacity().unwrap_or(0),
                     service_id: d.service_id(),
                 }
             }
@@ -394,6 +398,7 @@ mod tests {
                 next_session_id: 3,
                 next_service_session_id: i64::MIN + 1,
                 log_service_session_id: i64::MIN,
+                pending_message_capacity: 0,
             },
             "Long.MIN_VALUE is the field's null value, and a log's first service message id"
         );

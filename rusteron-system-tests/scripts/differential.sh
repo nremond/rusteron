@@ -24,12 +24,17 @@
 #   snapshot-load the snapshot is taken while a client sends;
 #   marks         Java checks the Rust mark file: readable, never torn, and
 #                 refused to a Java container of the same service;
+#   tool          Java's ClusterTool and rusteron's (cluster_tool) on every
+#                 node: the same output and exit status for each command
+#                 that only reads, and for suspend, resume and a snapshot
+#                 asked of a follower;
 #   dead-service  the Rust service is killed: the consensus module must see
 #                 its Aeron client go, and the run ends there.
 # ARCHIVE=rust runs the Rust archive beside each node instead of Java's (killed and restarted with it).
 # CM=rust runs the Rust consensus module beside each node instead of Java's, with JavaNode's settings;
 # CM_NODES="0 2" beside those nodes only, Java's on the others.
 # CLIENT=rust runs the Rust client (rusteron-cluster's AeronCluster, the echo_client binary) instead of Java's.
+# TOOL=rust runs rusteron's ClusterTool (cluster_tool) wherever the scenario runs Java's.
 # KEEP=1 keeps the work directory.
 set -euo pipefail
 
@@ -54,6 +59,8 @@ CM_NODES=${CM_NODES:-}
 rust_cm() { [[ " $CM_NODES " == *" $1 "* ]]; }
 CLIENT=${CLIENT:-java}
 ECHO_CLIENT=${ECHO_CLIENT:-$REPO/target/debug/echo_client}
+TOOL=${TOOL:-java}
+TOOL_BIN=${TOOL_BIN:-$REPO/target/debug/cluster_tool}
 echo_client() { # AERON_DIR PORT_BASE NODES COUNT [FIRST]: Java's EchoClient, or the Rust one
   if [[ $CLIENT == rust ]]; then
     "$ECHO_CLIENT" "$@"
@@ -201,12 +208,41 @@ client() { # count [first]
   leader=$(sed -n 's/.*leader=\([0-9]*\).*/\1/p' <<<"$out")
 }
 
-cluster_tool() { # node command
-  "$JAVA" -cp "$JAR" "${JVM_FLAGS[@]}" io.aeron.cluster.ClusterTool "$WORK/node$1/cluster" "$2"
+java_cluster_tool() { # node command [option]
+  "$JAVA" -cp "$JAR" "${JVM_FLAGS[@]}" -Daeron.dir="$WORK/aeron-$1" \
+    -Daeron.archive.control.channel="aeron:udp?endpoint=localhost:$((PORT_BASE + $1 * 100 + 1))" \
+    -Daeron.archive.control.response.channel="aeron:udp?endpoint=localhost:0" \
+    io.aeron.cluster.ClusterTool "$WORK/node$1/cluster" "${@:2}"
+}
+rust_cluster_tool() { # node command [option]: the same settings, as Aeron's C client reads them
+  AERON_DIR="$WORK/aeron-$1" AERON_ARCHIVE_CONTROL_CHANNEL="aeron:udp?endpoint=localhost:$((PORT_BASE + $1 * 100 + 1))" \
+    AERON_ARCHIVE_CONTROL_RESPONSE_CHANNEL="aeron:udp?endpoint=localhost:0" "$TOOL_BIN" "$WORK/node$1/cluster" "${@:2}"
+}
+cluster_tool() { # node command [option]
+  if [[ $TOOL == rust ]]; then rust_cluster_tool "$@"; else java_cluster_tool "$@"; fi
+}
+# What may differ between two runs of a command a moment apart: the clock, and the activity timestamp.
+normalise_tool() {
+  sed -E -e 's/^(Type: [A-Z_]+) .*/\1 <times>/' -e 's/activityTimestamp=-?[0-9]+/activityTimestamp=<t>/' \
+    -e 's/currentTimeNs=-?[0-9]+/currentTimeNs=<t>/' -e 's/timeOfLastAppendPositionNs=-?[0-9]+/timeOfLastAppendPositionNs=<t>/g' \
+    -e 's/^([0-9-]+ )[0-9:]+ (setting )?next: /\1<now> \2next: /'
+}
+compare_tool() { # node name command [option]: Java's and rusteron's output and exit status, alike
+  local n=$1 name=$2 java_rc=0 rust_rc=0
+  java_cluster_tool "$n" "${@:3}" >"$WORK/tool-$n-$name-java.txt" 2>"$WORK/tool-$n-$name-java.err" || java_rc=$?
+  rust_cluster_tool "$n" "${@:3}" >"$WORK/tool-$n-$name-rust.txt" 2>"$WORK/tool-$n-$name-rust.err" || rust_rc=$?
+  [[ $java_rc == "$rust_rc" ]] || fail "node $n $name: Java's ClusterTool exited $java_rc, rusteron's $rust_rc"
+  if ! diff -u <(normalise_tool <"$WORK/tool-$n-$name-java.txt") <(normalise_tool <"$WORK/tool-$n-$name-rust.txt") \
+    >"$WORK/tool-$n-$name.diff"; then
+    head -30 "$WORK/tool-$n-$name.diff" >&2
+    fail "node $n $name: Java's and rusteron's ClusterTool differ"
+  fi
+  echo "node $n $name: alike, exit $java_rc ($(wc -l <"$WORK/tool-$n-$name-java.txt") lines)"
 }
 
 [[ $ARCHIVE != rust || -x "$ARCHIVE_BIN" ]] || fail "build the archive: cargo build -p rusteron-archive --features static,server"
 [[ -z "$CM_NODES" || -x "$CM_BIN" ]] || fail "build the consensus module: cargo build -p rusteron-cluster --features static --bin consensus_module"
+[[ $TOOL != rust && $SCENARIO != tool || -x "$TOOL_BIN" ]] || fail "build the tool: cargo build -p rusteron-cluster --features static --bin cluster_tool"
 [[ $CLIENT != rust || -x "$ECHO_CLIENT" ]] || fail "build the client: cargo build -p rusteron-system-tests --features static"
 [[ -x "$DRIVER" && -x "$RUST_NODE" ]] || fail "build first: cargo build -p rusteron-driver --bin media_driver --features static && cargo build -p rusteron-system-tests --features static"
 
@@ -325,6 +361,30 @@ case "$SCENARIO" in
     sleep 0.5
     cluster_tool "$leader" snapshot || fail "snapshot under load"
     wait "$load_client" || fail "client under load: $(tail -3 "$WORK/client-load.log")"
+    ;;
+  tool)
+    for ((n = 0; n < NODES; n++)); do
+      await_joined "$n"
+      for command in describe pid recording-log errors list-members is-leader describe-latest-cm-snapshot \
+        backup-query; do
+        compare_tool "$n" "$command" "$command"
+      done
+      compare_tool "$n" recovery-plan recovery-plan 2
+      compare_tool "$n" unknown no-such-command
+    done
+    # Each tool suspends the cluster and resumes it, and each is refused a snapshot on a follower.
+    for tool in java rust; do
+      "${tool}_cluster_tool" "$leader" suspend >"$WORK/tool-suspend-$tool.txt" || fail "$tool suspend"
+      "${tool}_cluster_tool" "$leader" resume >"$WORK/tool-resume-$tool.txt" || fail "$tool resume"
+    done
+    diff "$WORK/tool-suspend-java.txt" "$WORK/tool-suspend-rust.txt" || fail "suspend printed differently"
+    diff "$WORK/tool-resume-java.txt" "$WORK/tool-resume-rust.txt" || fail "resume printed differently"
+    echo "suspend and resume: alike ($(cat "$WORK/tool-resume-rust.txt"))"
+    if ((NODES > 1)); then
+      follower=$(((leader + 1) % NODES))
+      compare_tool "$follower" snapshot-on-follower snapshot
+    fi
+    client "$COUNT"
     ;;
   marks)
     "$JAVA" -cp "$JAR" "${JVM_FLAGS[@]}" "$HERE/java/MarkFileChecks.java" "$WORK/node0/cluster" "$WORK/aeron-0" 0 0 5000 \

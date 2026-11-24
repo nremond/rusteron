@@ -22,6 +22,7 @@ The crate follows Aeron's `aeron-cluster` module: a module per Java class, named
 | `ServiceProxy`, `ConsensusModuleAdapter` | `service_proxy` |
 | `ConsensusModuleSnapshotTaker`, `…Adapter` | `consensus_module_snapshot_taker` |
 | `ClusterControl` | `cluster_control` |
+| `ClusterTool`, `ClusterToolOperator` | `cluster_tool` (the `cluster_tool` binary), `cluster_tool_operator` |
 | `ClusterBackup`, `ClusterBackupAgent` | `cluster_backup` (the shell; the `cluster_backup` binary), `cluster_backup_agent` |
 | `service.ClusteredServiceContainer`, `…Agent` | `service::clustered_service_container` (the shell), `service` |
 | `service.ClusteredService`, `Cluster` | `service::clustered_service` |

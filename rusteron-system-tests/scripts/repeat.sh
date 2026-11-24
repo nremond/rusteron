@@ -8,7 +8,7 @@ set -uo pipefail
 N=${1:-20}
 HERE=$(cd "$(dirname "$0")" && pwd)
 SCENARIOS=("basic 1" "restart 1" "timers 1" "marks 1" "dead-service 1" "failover 3" "uncommitted 3"
-  "empty-follower 3" "quorum-loss 3" "snapshot-load 3")
+  "empty-follower 3" "quorum-loss 3" "snapshot-load 3" "tool 3")
 
 start=$SECONDS
 for ((i = 1; i <= N; i++)); do

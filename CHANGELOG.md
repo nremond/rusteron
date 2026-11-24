@@ -12,6 +12,8 @@ wire- and on-disk-compatible with Aeron 1.54.2.
 - Added Aeron Cluster in Rust (`rusteron-cluster`): the consensus module, the clustered service
   container, the cluster client and the cluster backup, as sans-IO state machines with their shells
   on Aeron's C client, and the cluster's SBE codecs.
+- Added Aeron's `ClusterTool` in Rust (`rusteron-cluster`, the `cluster_tool` binary): its 18 commands, output
+  and exit codes, checked against Java's on the same nodes.
 - Added Aeron Archive's server in Rust to `rusteron-archive`, behind the `server` feature: what a
   cluster asks of its archive, its SBE codecs, and the `aeron_archive` binary. The crate's licence is
   now "(MIT OR Apache-2.0) AND Apache-2.0": the server is Apache-2.0 only, as Aeron.

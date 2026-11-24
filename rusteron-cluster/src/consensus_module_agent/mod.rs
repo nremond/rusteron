@@ -1063,6 +1063,7 @@ impl ConsensusModule {
                 next_session_id,
                 next_service_session_id,
                 log_service_session_id,
+                ..
             } => {
                 self.sessions.load_next_session_id(next_session_id);
                 if let Some(tracker) = self.trackers.first_mut() {
@@ -1094,6 +1095,7 @@ impl ConsensusModule {
                 next_service_session_id,
                 log_service_session_id,
                 service_id,
+                ..
             } => {
                 let count = self.trackers.len();
                 let tracker = usize::try_from(service_id)

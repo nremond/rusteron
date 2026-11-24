@@ -13,6 +13,7 @@
 //!   [`service_proxy`], [`consensus_module_snapshot_taker`] and
 //!   [`cluster_control`];
 //! - the cluster backup: [`cluster_backup`] and [`cluster_backup_agent`];
+//! - Aeron's `ClusterTool`: [`cluster_tool`] and [`cluster_tool_operator`];
 //! - the clustered service container: [`service`] (`io.aeron.cluster.service`);
 //! - the cluster client: [`client`] (`io.aeron.cluster.client`);
 //! - the counters ([`cluster_counters`]) and the SBE codecs ([`codecs`]).
@@ -35,6 +36,8 @@ pub mod cluster_backup_agent;
 pub mod cluster_control;
 pub mod cluster_counters;
 pub mod cluster_member;
+pub mod cluster_tool;
+pub mod cluster_tool_operator;
 pub mod codecs;
 pub mod consensus_adapter;
 pub mod consensus_module;

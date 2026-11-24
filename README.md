@@ -65,7 +65,7 @@ The crates follow Aeron's modules, and inside them a module per Java class, name
 | `aeron-client` | [rusteron-client](rusteron-client/README.md): bindings to the C client |
 | `aeron-driver` | [rusteron-driver](rusteron-driver/README.md): bindings to the C media driver |
 | `aeron-archive` | [rusteron-archive](rusteron-archive/README.md#aeron-archives-server-in-rust-this-fork): bindings to the C archive client, and the archive server in Rust (`server` feature, `aeron_archive`) |
-| `aeron-cluster` | [rusteron-cluster](rusteron-cluster/README.md): the consensus module (`consensus_module`), the service container, the client and the backup (`cluster_backup`) in Rust |
+| `aeron-cluster` | [rusteron-cluster](rusteron-cluster/README.md): the consensus module (`consensus_module`), the service container, the client, the backup (`cluster_backup`) and ClusterTool (`cluster_tool`) in Rust |
 | `aeron-system-tests` | [rusteron-system-tests](rusteron-system-tests/README.md): scenarios beside Java's nodes, Jepsen, a deterministic simulator (not published) |
 | `aeron-samples` | [rusteron-samples](rusteron-samples/README.md) |
 

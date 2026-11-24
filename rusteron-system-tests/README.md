@@ -15,9 +15,9 @@ SCENARIO=failover scripts/differential.sh 3 1000
 scripts/repeat.sh 20
 ```
 
-Scenarios: `basic`, `restart`, `timers`, `failover` (3 nodes), `marks`, `dead-service`; what each does and what passing means is in `scripts/differential.sh` and `../rusteron-cluster/docs/design.md` §5. `scripts/skeleton.sh` runs a Java cluster alone on the C driver.
+Scenarios: `basic`, `restart`, `timers`, `failover` (3 nodes), `marks`, `dead-service`, and `tool`, which runs Java's ClusterTool and rusteron's on every node and requires the same output and exit status from both; what each does and what passing means is in `scripts/differential.sh` and `../rusteron-cluster/docs/design.md` §5. `scripts/skeleton.sh` runs a Java cluster alone on the C driver.
 
-Each Java piece can be swapped for rusteron's: `ARCHIVE=rust` puts the Rust archive (`aeron_archive`, from `rusteron-archive`) under every node, `CM=rust` the Rust consensus module (`consensus_module`, from `rusteron-cluster`) on every node and `CM_NODES="0 2"` on some, and `CLIENT=rust` the Rust client.
+Each Java piece can be swapped for rusteron's: `TOOL=rust` runs rusteron's ClusterTool (`cluster_tool`) wherever a scenario runs Java's, `ARCHIVE=rust` puts the Rust archive (`aeron_archive`, from `rusteron-archive`) under every node, `CM=rust` the Rust consensus module (`consensus_module`, from `rusteron-cluster`) on every node and `CM_NODES="0 2"` on some, and `CLIENT=rust` the Rust client.
 
 `scripts/backup.sh` runs the Rust cluster backup (`cluster_backup`) beside Java's ClusterBackup (`java/JavaBackup.java`) on one cluster, Java's modules or Rust's (`CM=rust`), and checks that both hold the leader's log byte for byte (`java/BackupCheck.java`, CRC-32C of replays) with the same recording-log entries; `SCENARIO=failover` kills the leader on the way. `scripts/bench.sh` measures the Rust container against Java's.
 
