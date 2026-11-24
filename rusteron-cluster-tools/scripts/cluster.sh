@@ -42,7 +42,9 @@
 #   ext_lose_node N LOST                                              dr-seed: node N's directory went to LOST
 #   EXT_SETTINGS=(NAME ...)                                           its own settings, kept as this script's
 #
-# It may use these: port N OFFSET, host_of N, dir_of N, aeron_of N, is_standby N, run_unit, up_count N, LAYOUT.
+# It may use these: port N OFFSET, host_of N, dir_of N, aeron_of N, is_standby N, run_unit, up_count N,
+# ready_count N UNIT (the READY lines in its log), SB (the standby's node), the *_BIN variables and LAYOUT. An
+# example: rusteron-cluster-interop/scripts/events-ext.sh, a second archive on every node.
 #
 # STANDBY=1 at start adds the standby. It idles whatever the members do: a SHARED driver, nothing busy-spinning,
 # its archive unsynced. STANDBY_OPTS adds to cluster_standby's options (--keep-snapshots K), CM_OPTS to every

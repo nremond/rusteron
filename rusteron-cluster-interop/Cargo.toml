@@ -7,10 +7,12 @@ publish = false
 description = "Runs rusteron-cluster against Java Aeron Cluster 1.54.2: the Rust service container beside Java's, on the same log."
 
 [features]
-static = ["rusteron-cluster/static"]
+static = ["rusteron-cluster/static", "rusteron-archive/static"]
 
 [dependencies]
+crc32c = "0.6"
 hdrhistogram = { workspace = true }
+rusteron-archive = { path = "../rusteron-archive" }
 rusteron-cluster = { path = "../rusteron-cluster" }
 
 [[bin]]
@@ -32,3 +34,7 @@ path = "src/bin/bench_client.rs"
 [[bin]]
 name = "client_lines"
 path = "src/bin/client_lines.rs"
+
+[[bin]]
+name = "archive_streams"
+path = "src/bin/archive_streams.rs"

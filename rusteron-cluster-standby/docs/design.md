@@ -105,11 +105,19 @@ The copy keeps the standby's log byte for byte, even when it ends inside a fragm
 3. A follower restarted: it lists the standby's set and its service starts from it. More load, and every log is the same.
 4. The disaster: every member killed and reseeded from the standby (`dr-seed`). The new cluster elects, every service starts from the set, the load goes through, and every log, the standby's too, is the same from the start.
 
+Every node also runs an events archive: a second archive on its driver, as an application keeps for an event log. `scripts/events-ext.sh`, the `cluster.sh` extension the script uses, starts it. It checks `--extra-archive`:
+
+- Before the disaster, the standby's events archive gets three recordings (`archive_streams record`): stream 200 twice, of different messages, then stream 201.
+- `dr-seed` copies them into each new member's events archive.
+- Each new member's must then hold exactly the standby's newest recording of each stream, with the same start, stop and messages at the same positions (`archive_streams list`, a CRC-32C of a replay).
+- The follower restarted in step 3 must have its events archive back too.
+
 With `PLANTED=1` the seed uses `--stop-at-set`, and the script passes only if the last check fails.
 
-Results on Linux x86-64, 1,000 echoes per load step, the whole run in 18 s:
+Results on Linux x86-64, 1,000 echoes per load step, the whole run in 16 s:
 
 - **Step 2.** The standby's module state at the members' snapshot (at 102,848) was theirs. Its service trace was the leader's, all 3,308 lines. All four logs were the same to 308,256.
 - **Step 3.** The restarted follower listed the standby's set (at 205,600) and its service started there. The logs were the same to 410,912.
-- **Step 4.** The three members were seeded at once, the log copied to its end at 410,912. Two seeds took 0.2 s and one 4.9 s. The new cluster elected a leader in term 1, and each new service started from the set. All four logs were the same from 0 to 513,664, the standby's following the new cluster.
+- **Step 4.** The three members were seeded at once, the log copied to its end at 410,912, and the events archives' recordings with it. One seed took 2.3 s and two 0.3 s. The new cluster elected a leader in term 1, and each new service started from the set. All four logs were the same from 0 to 513,664, the standby's following the new cluster.
+- **Events archives.** Each new member's held the standby's newest recording of stream 200 (to 634,112, not the older one of other messages) and its recording of stream 201 (to 313,728), with the standby's checksums. A run with the copy narrowed to stream 201 (`streams=201`) failed on the members' missing stream 200, as it must.
 - **Planted bug.** With `PLANTED=1`, `log_check` found the standby's log unlike the new members' and failed, as it must.

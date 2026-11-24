@@ -19,11 +19,18 @@
 #    start from the set, COUNT more echoes go through, and every log, the standby's too, is the same from the
 #    start.
 #
+# Every node also runs an events archive, a second archive on its driver (scripts/events-ext.sh, the cluster.sh
+# extension). Before the disaster the standby's gets three recordings (archive_streams record): stream 200 twice,
+# of different messages, and stream 201. dr-seed copies them (standby_seed --extra-archive), and each new
+# member's events archive must then hold exactly the standby's newest recording of each stream, at the same
+# positions with the same messages (archive_streams list). A restarted member's events archive must answer too.
+#
 # PLANTED=1 seeds with standby_seed --stop-at-set, the log copied only to the set: the members then lose what the
 # standby held after it, and the last check must fail (the script passes only if it does). Binaries are the
 # release builds (BIN, default target/release): node_driver, aeron_archive, consensus_module, rust_service_node,
-# echo_client, cluster_standby, standby_seed, standby_check, cluster_tool, log_check. PORT_BASE (21000) moves the
-# cluster's ports, AERON_ROOT (/dev/shm or TMPDIR) its drivers' directories. KEEP=1 keeps the work directory.
+# echo_client, archive_streams, cluster_standby, standby_seed, standby_check, cluster_tool, log_check. PORT_BASE
+# (21000) moves the cluster's ports, AERON_ROOT (/dev/shm or TMPDIR) its drivers' directories. KEEP=1 keeps the
+# work directory.
 set -euo pipefail
 
 COUNT=${1:-1000}
@@ -38,6 +45,8 @@ export DATA=$WORK/nodes
 export AERON_DIR=$AERON_ROOT/rusteron-standby-$$
 export STANDBY=1
 export STANDBY_OPTS="--record-module-states"
+export CLUSTER_EXT=$HERE/scripts/events-ext.sh
+EVENTS_CONTROL_STREAM=110
 CLIENT_DIR=$WORK/client
 LAYOUT=(--hosts localhost,localhost,localhost --port-base "$PORT_BASE" --dir "$DATA" --aeron-dir "$AERON_DIR")
 CLIENT_PID=""
@@ -57,8 +66,8 @@ fail() {
 
 step() { echo "== $* ($(date +%T))"; }
 
-for bin in node_driver aeron_archive consensus_module rust_service_node echo_client cluster_standby standby_seed \
-  standby_check cluster_tool log_check; do
+for bin in node_driver aeron_archive consensus_module rust_service_node echo_client archive_streams cluster_standby \
+  standby_seed standby_check cluster_tool log_check; do
   [ -x "$BIN/$bin" ] || fail "no $BIN/$bin: build it first (see $CLUSTER's header)"
 done
 
@@ -127,6 +136,37 @@ newest_set() {
   tail -1 "$DATA/standby0/standby-snapshots" | cut -d' ' -f1
 }
 
+# The recordings of an events archive, a line each, by the driver its node runs on: as archive_streams lists
+# them, less their ids, which differ between copies.
+events_of() { # driver directory
+  "$BIN/archive_streams" list "$1" "$EVENTS_CONTROL_STREAM" | sed 's/^recording=[0-9]* //' | sort
+}
+
+# Records COUNT messages of TAG on a new recording of STREAM, in the standby's events archive.
+record_events() { # stream, count, tag
+  "$BIN/archive_streams" record "$AERON_DIR/standby0" "$EVENTS_CONTROL_STREAM" "$1" "$2" "$3" > /dev/null ||
+    fail "recording stream $1 ($3) in the standby's events archive"
+}
+
+# Every new member's events archive against the standby's: exactly its newest recording of each stream.
+events_agree() {
+  local expected got i
+  expected=$("$BIN/archive_streams" list "$AERON_DIR/standby0" "$EVENTS_CONTROL_STREAM" |
+    awk '{ split($2, s, "="); last[s[2]] = $0 } END { for (k in last) print last[k] }' |
+    sed 's/^recording=[0-9]* //' | sort)
+  [ "$(echo "$expected" | grep -c '^stream=')" = 2 ] || fail "the standby's events archive: $expected"
+  for i in 0 1 2; do
+    got=$(events_of "$AERON_DIR/node$i") || fail "new member $i's events archive did not answer"
+    [ "$got" = "$expected" ] ||
+      fail "new member $i's events archive holds
+$(echo "$got" | sed 's/^/  /')
+not the standby's newest of each stream
+$(echo "$expected" | sed 's/^/  /')"
+  done
+  echo "events     every new member's events archive holds the standby's newest recording of streams 200" \
+    "and 201, the same: $(echo "$expected" | tr '\n' ' ')"
+}
+
 step "1. start, echoes, the members' snapshot, a standby snapshot"
 "$CLUSTER" start > "$WORK/start.log" 2>&1 || fail "start: $(tail -5 "$WORK/start.log")"
 cat "$WORK/start.log"
@@ -155,11 +195,15 @@ starts=$(grep -c '^start ' "$DATA/node$follower/service.trace")
 started=$(started_at "$follower" "$starts")
 [ "$started" = "$set_position" ] || fail "node $follower's service started at ${started:-nothing}, not at the set's $set_position"
 echo "restart    node $follower's service started from the standby's set at $set_position"
+events_of "$AERON_DIR/node$follower" > /dev/null || fail "node $follower's events archive did not come back"
 echoes
 await_standby
 logs_agree || fail "the logs after the restart"
 
 step "4. the disaster: every member lost, a new cluster from the standby"
+record_events 200 1000 a
+record_events 200 600 b
+record_events 201 300 c
 set_position=$(newest_set)
 seed_options=()
 [ "${PLANTED:-}" = 1 ] && seed_options=(--stop-at-set)
@@ -171,6 +215,7 @@ for i in 0 1 2; do
   [ "$started" = "$set_position" ] || fail "new member $i's service started at ${started:-nothing}, not at $set_position"
 done
 echo "seeded     every new member's service started from the standby's set at $set_position"
+events_agree
 echoes
 if [ "${PLANTED:-}" = 1 ]; then
   # The standby holds log the new cluster never had: it cannot catch up with it, so it is not waited for.
