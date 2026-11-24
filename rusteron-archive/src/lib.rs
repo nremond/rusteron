@@ -123,6 +123,12 @@ pub const PUBLICATION_ERROR: i64 = bindings::AERON_PUBLICATION_ERROR as i64;
 
 pub mod testing;
 
+// Pure-Rust parts of Aeron's client and Agrona that the archive server and the cluster share.
+pub mod distinct_error_log;
+pub mod fragment_assembler;
+pub mod logbuffer;
+pub mod mark_file;
+
 /// A recording descriptor is borrowed from a C stack local that Aeron frees once the callback
 /// returns, so it cannot be kept, nor cloned or rewrapped and kept. Copying a field out is fine:
 ///

@@ -1,7 +1,11 @@
 //! Frames from an image, reassembled into messages: what Java's
 //! `BoundedLogAdapter` does with a `BufferBuilder` for the cluster's log.
 
-use crate::position::{BEGIN_FRAGMENT, END_FRAGMENT, FRAME_ALIGNMENT, HEADER_LENGTH, UNFRAGMENTED, align};
+#![forbid(unsafe_code)]
+// The crate allows every clippy lint for its generated bindings; this module is checked.
+#![warn(clippy::all)]
+
+use crate::logbuffer::{BEGIN_FRAGMENT, END_FRAGMENT, FRAME_ALIGNMENT, HEADER_LENGTH, UNFRAGMENTED, align};
 
 /// What a fragment handler tells the image's controlled poll.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,7 +95,7 @@ mod tests {
     use super::*;
 
     fn frame(payload: &[u8], flags: u8, term_offset: i32) -> Fragment<'_> {
-        let position = term_offset as i64 + crate::position::aligned_frame_length(payload.len() as i32) as i64;
+        let position = term_offset as i64 + crate::logbuffer::aligned_frame_length(payload.len() as i32) as i64;
         Fragment {
             payload,
             flags,

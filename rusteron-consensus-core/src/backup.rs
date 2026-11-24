@@ -151,7 +151,7 @@ impl ReplayStart {
 
 /// Where the live log's replay starts (Java's `replayStartPosition`): where
 /// the local log's recording stopped (`last_term_stop_position`), when the
-/// recording log has a term; else [`NULL_POSITION`], the log's start, or
+/// recording log has a term; else `NULL_POSITION` (-1), the log's start, or
 /// the latest consensus module snapshot's position among those retrieved.
 pub fn replay_start_position(
     last_term_stop_position: Option<i64>,

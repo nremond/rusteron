@@ -16,10 +16,10 @@
 
 pub mod client;
 pub mod counters;
-pub mod log;
+pub use rusteron_archive::fragment_assembler as log;
 pub mod markfile;
 pub mod node_state;
-pub mod position;
+pub use rusteron_archive::logbuffer as position;
 pub mod recording_log;
 pub mod service;
 #[cfg(feature = "testkit")]

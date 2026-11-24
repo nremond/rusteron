@@ -11,8 +11,8 @@
 //! recording's counter, for services' acks, for a snapshot to be recorded);
 //! here each wait is a state the duty cycle checks.
 //!
-//! The election is in [`election`], what members say to each other outside
-//! it and each one's part after it in [`peers`].
+//! The election is in the `election` submodule, what members say to each
+//! other outside it and each one's part after it in `peers`.
 
 use std::collections::{HashMap, VecDeque};
 

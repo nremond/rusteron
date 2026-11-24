@@ -302,7 +302,7 @@ const REPLACE_MS: i64 = 30_000;
 /// A fault injector's pause of a leader while a follower just restarted
 /// replays its log (seen in runs with no JVM, 2026-11-02): with no random
 /// fault, a
-/// follower crashes at `config.fault_ms` and restarts [`DOWN_MS`] later;
+/// follower crashes at `config.fault_ms` and restarts `DOWN_MS` (6 s) later;
 /// once its election replays its log, the leader is cut off from the
 /// others, as a paused process is from its peers, until another member
 /// leads a newer term. Then the links heal and the cluster has
@@ -473,7 +473,7 @@ const SERVICE_PAUSE_MS: i64 = 200;
 /// A follower's catch-up given up while the leader's archive, busy, is slow
 /// to stop its replay, as fault injection had it on Java's members
 /// (aeron-io/aeron#2259): with no random fault, a follower crashes at
-/// `config.fault_ms` and restarts [`DOWN_MS`] later. Once it catches up, the
+/// `config.fault_ms` and restarts `DOWN_MS` (6 s) later. Once it catches up, the
 /// leader's archive turns busy: its replays stall, for the follower to give
 /// the catch-up up for want of progress, and its requests wait, the stop of
 /// that replay among them. Once the follower awaits its next catch-up there,

@@ -244,7 +244,7 @@ fn take_lock(dir: &Path, file_name: &str, path: &Path, bytes: &[u8], now_ms: i64
 /// What the lock of mark file `file_name` in `dir` shows, for a tool that
 /// only looks ([`owner`]): held by a live process, or free and the writer it
 /// records, or absent. A free lock is taken and let go at once; a start that
-/// meets it held meanwhile tries again ([`LOCK_PATIENCE`]).
+/// meets it held meanwhile tries again (`LOCK_PATIENCE`, 250 ms).
 pub fn probe_lock(dir: &Path, file_name: &str) -> Lock {
     let Ok(lock) = File::open(dir.join(owner::lock_file_name(file_name))) else {
         return Lock::Absent;

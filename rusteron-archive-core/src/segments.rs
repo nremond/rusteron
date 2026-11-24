@@ -17,7 +17,7 @@
 use std::fs::File;
 use std::io::{self, Seek, SeekFrom, Write};
 
-use rusteron_cluster_core::position::{FRAME_ALIGNMENT, HEADER_LENGTH};
+use rusteron_archive::logbuffer::{FRAME_ALIGNMENT, HEADER_LENGTH};
 
 /// A segment file's suffix.
 pub const SEGMENT_SUFFIX: &str = ".rec";

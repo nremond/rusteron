@@ -15,7 +15,7 @@ testkit = []
 
 [dependencies]
 rusteron-archive-codecs = { path = "../rusteron-archive-codecs", version = "0.1.0" }
-rusteron-cluster-core = { path = "../rusteron-cluster-core", version = "0.1.0" }
+rusteron-archive = { path = "../rusteron-archive", version = "0.3.2" }
 
 [dev-dependencies]
 proptest = { workspace = true }

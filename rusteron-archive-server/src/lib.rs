@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use rusteron_archive::fragment_assembler::{Fragment, PollAction, Reassembler};
 use rusteron_archive::*;
 use rusteron_archive_core::catalog::{CATALOG_FILE_NAME, Catalog, DEFAULT_CAPACITY, NULL_POSITION, RecordingState};
 use rusteron_archive_core::conductor::{
@@ -35,7 +36,6 @@ use rusteron_archive_core::segments::{
     Recovery, compute_stop_position, parse_segment_file_name, segment_file_name, truncate_torn_fragment,
 };
 use rusteron_archive_core::verify::{Verdict, verify_recording, wants_more};
-use rusteron_cluster_core::log::{Fragment, PollAction, Reassembler};
 
 use counters::{add, load, propose_max, store};
 use markfile::{ArchiveHeader, ArchiveMarkFile, UPDATE_INTERVAL_MS};

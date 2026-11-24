@@ -19,7 +19,7 @@
 
 use crate::protocol::error_code;
 use crate::segments::{PADDING_FRAME_TYPE, segment_file_base_position, segment_file_name};
-use rusteron_cluster_core::position::{FRAME_ALIGNMENT, HEADER_LENGTH};
+use rusteron_archive::logbuffer::{FRAME_ALIGNMENT, HEADER_LENGTH};
 
 /// Aeron's longest term: a replay offers no more than this at once.
 pub const TERM_MAX_LENGTH: i64 = 1024 * 1024 * 1024;

@@ -1,6 +1,11 @@
-//! Aeron's log arithmetic: how messages become frames in a term, and frames
+//! Aeron's log arithmetic, as Aeron's `io.aeron.logbuffer` (`FrameDescriptor`,
+//! `LogBufferDescriptor`) has it: how messages become frames in a term, and frames
 //! positions. Positions in the cluster's log are stream positions: a message's
 //! is the position just after its last frame.
+
+#![forbid(unsafe_code)]
+// The crate allows every clippy lint for its generated bindings; this module is checked.
+#![warn(clippy::all)]
 
 /// Every frame starts on a multiple of this.
 pub const FRAME_ALIGNMENT: i32 = 32;

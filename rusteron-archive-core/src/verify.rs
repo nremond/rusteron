@@ -23,7 +23,7 @@
 use crate::catalog::{Descriptor, NULL_POSITION};
 use crate::segments::{Recovery, compute_stop_position, frame_length};
 
-use rusteron_cluster_core::position::{FRAME_ALIGNMENT, HEADER_LENGTH, position_bits_to_shift};
+use rusteron_archive::logbuffer::{FRAME_ALIGNMENT, HEADER_LENGTH, position_bits_to_shift};
 
 const TERM_OFFSET_OFFSET: usize = 8;
 const STREAM_ID_OFFSET: usize = 16;

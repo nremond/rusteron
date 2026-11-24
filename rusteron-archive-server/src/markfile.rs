@@ -12,12 +12,12 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
+use rusteron_archive::distinct_error_log as error_log;
+use rusteron_archive::mark_file::owner::{self, Header, Lock, Owner, Record};
 use rusteron_archive_codecs::mark::{
     WriteBuf, mark_file_header_codec, mark_file_header_codec::MarkFileHeaderEncoder, message_header_codec,
 };
 use rusteron_archive_core::catalog::SEMANTIC_VERSION;
-use rusteron_cluster_core::markfile::error_log;
-use rusteron_cluster_core::markfile::owner::{self, Header, Lock, Owner, Record};
 
 pub const FILE_NAME: &str = "archive-mark.dat";
 pub const LINK_FILE_NAME: &str = "archive-mark.lnk";
