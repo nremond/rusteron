@@ -4,13 +4,16 @@
 //! header, the activity timestamp, then the version that says it is ready.
 
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, TryLockError};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
+use rusteron_cluster_core::markfile::owner::{self, Header, Lock, Owner, Record};
 use rusteron_cluster_core::markfile::{
-    self, ACTIVITY_TIMESTAMP_OFFSET, ContainerHeader, HEADER_LENGTH, LIVENESS_TIMEOUT_MS, MEMBER_ID_OFFSET,
-    SEMANTIC_VERSION, VERSION_OFFSET, error_log,
+    self, ACTIVITY_TIMESTAMP_OFFSET, ContainerHeader, HEADER_LENGTH, MEMBER_ID_OFFSET, SEMANTIC_VERSION,
+    VERSION_OFFSET, error_log,
 };
 
 #[cfg(unix)]
@@ -49,6 +52,9 @@ fn read_at(file: &File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()>
 /// A container's mark file, open for as long as the container runs.
 pub struct MarkFile {
     file: File,
+    /// Its lock file, locked while the component runs ([`owner`]).
+    lock: File,
+    terminated: AtomicBool,
     path: PathBuf,
     error_capacity: usize,
     next_error: usize,
@@ -77,7 +83,9 @@ impl MarkFile {
 
     /// A mark file named `file_name` with the header `bytes` (a consensus
     /// module's, say), its link file `link_name` removed: refused while
-    /// another process keeps it active.
+    /// another process may still run there ([`owner`]). Its lock is held
+    /// until [`signal_terminated`](Self::signal_terminated), or the process
+    /// ends.
     pub fn create_named(
         dir: &Path,
         file_name: &str,
@@ -89,26 +97,7 @@ impl MarkFile {
     ) -> io::Result<Self> {
         std::fs::create_dir_all(dir)?;
         let path = dir.join(file_name);
-        if let Ok(existing) = File::open(&path) {
-            let mut version = [0; 4];
-            let mut activity = [0; 8];
-            if read_at(&existing, &mut version, VERSION_OFFSET as u64).is_ok()
-                && read_at(&existing, &mut activity, ACTIVITY_TIMESTAMP_OFFSET as u64).is_ok()
-            {
-                let version = i32::from_le_bytes(version);
-                let activity = i64::from_le_bytes(activity);
-                if version > 0 && activity > 0 && now_ms - activity < LIVENESS_TIMEOUT_MS {
-                    return Err(io::Error::new(
-                        io::ErrorKind::AlreadyExists,
-                        format!(
-                            "active mark file detected: {} ({}ms ago)",
-                            path.display(),
-                            now_ms - activity
-                        ),
-                    ));
-                }
-            }
-        }
+        let lock = take_lock(dir, file_name, &path, bytes, now_ms)?;
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -126,6 +115,8 @@ impl MarkFile {
         }
         Ok(Self {
             file,
+            lock,
+            terminated: AtomicBool::new(false),
             path,
             error_capacity: error_buffer_length,
             next_error: 0,
@@ -137,7 +128,12 @@ impl MarkFile {
         &self.path
     }
 
+    /// The activity timestamp refreshed, unless the component has signalled
+    /// that it stopped: a successor may be starting over it.
     pub fn update_activity(&self, now_ms: i64) -> io::Result<()> {
+        if self.terminated.load(Ordering::Acquire) {
+            return Ok(());
+        }
         write_at(&self.file, &now_ms.to_le_bytes(), ACTIVITY_TIMESTAMP_OFFSET as u64)
     }
 
@@ -181,11 +177,103 @@ impl MarkFile {
         Ok(true)
     }
 
-    /// The container stopped: its activity is no more, for whoever starts next.
+    /// The component stopped: its activity is no more and its lock let go,
+    /// for whoever starts next.
     pub fn signal_terminated(&self) -> io::Result<()> {
+        self.terminated.store(true, Ordering::Release);
         write_at(&self.file, &(-1i64).to_le_bytes(), ACTIVITY_TIMESTAMP_OFFSET as u64)?;
-        self.file.sync_all()
+        self.file.sync_all()?;
+        self.lock.unlock()
     }
+}
+
+/// How long a start tries for its lock while a tool looks at it
+/// ([`probe_lock`] holds it a moment).
+const LOCK_PATIENCE: Duration = Duration::from_millis(250);
+
+/// The lock of mark file `file_name` in `dir`, taken for a component about
+/// to write the mark file at `path` with header `bytes` ([`owner`]). Refused
+/// if a live process holds it, or if the mark file's writer may still run by
+/// its activity timestamp and nothing proves it gone. Taken, it records this
+/// writer.
+fn take_lock(dir: &Path, file_name: &str, path: &Path, bytes: &[u8], now_ms: i64) -> io::Result<File> {
+    let lock_name = owner::lock_file_name(file_name);
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(dir.join(&lock_name))?;
+    let deadline = Instant::now() + LOCK_PATIENCE;
+    loop {
+        match lock.try_lock() {
+            Ok(()) => break,
+            Err(TryLockError::WouldBlock) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(5)),
+            Err(TryLockError::WouldBlock) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    format!(
+                        "active mark file detected: {} (a live process holds {lock_name})",
+                        path.display()
+                    ),
+                ));
+            }
+            Err(TryLockError::Error(e)) => return Err(e),
+        }
+    }
+    let found = Lock::Free(read_record(&lock));
+    if let Owner::Active { activity_timestamp_ms } = owner::owner(read_header(path).as_ref(), &found, now_ms) {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!(
+                "active mark file detected: {} ({}ms ago)",
+                path.display(),
+                now_ms - activity_timestamp_ms
+            ),
+        ));
+    }
+    let writer = Header::read(bytes)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "the mark file's header is too short"))?
+        .record();
+    lock.set_len(0)?;
+    write_at(&lock, writer.encode().as_bytes(), 0)?;
+    lock.sync_data()?;
+    Ok(lock)
+}
+
+/// What the lock of mark file `file_name` in `dir` shows, for a tool that
+/// only looks ([`owner`]): held by a live process, or free and the writer it
+/// records, or absent. A free lock is taken and let go at once; a start that
+/// meets it held meanwhile tries again ([`LOCK_PATIENCE`]).
+pub fn probe_lock(dir: &Path, file_name: &str) -> Lock {
+    let Ok(lock) = File::open(dir.join(owner::lock_file_name(file_name))) else {
+        return Lock::Absent;
+    };
+    match lock.try_lock() {
+        Ok(()) => {
+            let record = read_record(&lock);
+            let _ = lock.unlock();
+            Lock::Free(record)
+        }
+        Err(TryLockError::WouldBlock) => Lock::Held,
+        Err(TryLockError::Error(_)) => Lock::Absent,
+    }
+}
+
+/// The writer a lock file records, if it records one.
+fn read_record(lock: &File) -> Option<Record> {
+    let length = usize::try_from(lock.metadata().ok()?.len()).ok()?.min(64);
+    let mut bytes = vec![0; length];
+    read_at(lock, &mut bytes, 0).ok()?;
+    Record::parse(std::str::from_utf8(&bytes).ok()?)
+}
+
+/// The header of the mark file at `path`, if it is there and long enough.
+pub fn read_header(path: &Path) -> Option<Header> {
+    let file = File::open(path).ok()?;
+    let mut bytes = [0; owner::HEADER_READ_LENGTH];
+    read_at(&file, &mut bytes, 0).ok()?;
+    Header::read(&bytes)
 }
 
 #[cfg(test)]
@@ -225,6 +313,77 @@ mod tests {
         assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
         mark.signal_terminated().unwrap();
         MarkFile::create(&dir, &header(), 4_096, 100_600).expect("a stopped container is replaced");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    const LOCK_NAME: &str = "cluster-mark-service-0.lck";
+
+    #[test]
+    fn a_killed_container_is_replaced_at_once() {
+        let dir = temp_dir("killed");
+        let mark = MarkFile::create(&dir, &header(), 4_096, 100_000).unwrap();
+        // A kill: the lock goes with the process, the activity stays fresh.
+        drop(mark);
+        MarkFile::create(&dir, &header(), 4_096, 100_500).expect("its lock proves the writer gone");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_paused_container_is_not_started_over_however_stale_its_activity() {
+        let dir = temp_dir("paused");
+        let _mark = MarkFile::create(&dir, &header(), 4_096, 100_000).unwrap();
+        let err = MarkFile::create(&dir, &header(), 4_096, 100_000 + 3 * markfile::LIVENESS_TIMEOUT_MS)
+            .err()
+            .expect("refused");
+        assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
+        assert!(err.to_string().contains("a live process holds"), "{err}");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn without_a_lock_naming_its_writer_a_mark_file_is_judged_by_its_activity() {
+        for lock in [None, Some("2 1000\n"), Some("not a record")] {
+            let dir = temp_dir("unlocked");
+            drop(MarkFile::create(&dir, &header(), 4_096, 100_000).unwrap());
+            // As a Java component, or an earlier Rust one, leaves it: no lock file, or another writer's.
+            match lock {
+                None => std::fs::remove_file(dir.join(LOCK_NAME)).unwrap(),
+                Some(text) => std::fs::write(dir.join(LOCK_NAME), text).unwrap(),
+            }
+            let err = MarkFile::create(&dir, &header(), 4_096, 100_500)
+                .err()
+                .expect("refused");
+            assert!(err.to_string().contains("(500ms ago)"), "{lock:?}: {err}");
+            MarkFile::create(&dir, &header(), 4_096, 100_000 + markfile::LIVENESS_TIMEOUT_MS)
+                .expect("past the liveness timeout");
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn a_probe_sees_the_lock_held_free_or_absent() {
+        let dir = temp_dir("probe");
+        let name = markfile::service_file_name(0);
+        assert_eq!(probe_lock(&dir, &name), Lock::Absent);
+        let mark = MarkFile::create(&dir, &header(), 4_096, 100_000).unwrap();
+        assert_eq!(probe_lock(&dir, &name), Lock::Held);
+        drop(mark);
+        let record = Record {
+            pid: 1,
+            start_timestamp_ms: 1_000,
+        };
+        assert_eq!(probe_lock(&dir, &name), Lock::Free(Some(record)));
+        assert_eq!(read_header(&dir.join(&name)).map(|h| h.record()), Some(record));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_stopped_container_refreshes_its_activity_no_more() {
+        let dir = temp_dir("stopped");
+        let mark = MarkFile::create(&dir, &header(), 4_096, 100_000).unwrap();
+        mark.signal_terminated().unwrap();
+        mark.update_activity(100_100).unwrap();
+        assert_eq!(read_header(mark.path()).unwrap().activity_timestamp_ms, -1);
         std::fs::remove_dir_all(dir).unwrap();
     }
 

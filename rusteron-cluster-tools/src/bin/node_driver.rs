@@ -14,8 +14,9 @@
 //! options it has no use for, so a script can pass every process of a node
 //! the same command line. In order:
 //!
-//! 1. It waits out the mark files a node killed here moments ago left,
-//!    unless SIGTERM comes first ([`rusteron_cluster_tools::driver::mark_files`]).
+//! 1. It waits out the mark files a node killed here moments ago left, but
+//!    not those whose locks prove their writers gone, and not once SIGTERM
+//!    comes ([`rusteron_cluster_tools::driver::mark_files`]).
 //! 2. It runs the driver on this thread: its directory deleted on start and
 //!    on shutdown, sparse term buffers, the threading mode, multicast NAKs
 //!    timed for a group of the other members and backing off up to 2 ms
@@ -76,7 +77,8 @@ fn main() -> ExitCode {
     }
 
     // A node killed moments ago left mark files its archive and consensus module take for a live process's
-    // for 10 s: wait them out rather than see them fail to start and be started again.
+    // for 10 s, unless their locks prove the writers gone: wait out the others rather than see them fail to
+    // start and be started again.
     let waited = mark_files::await_stale(
         &options.node_dir,
         mark_files::LIVENESS_MS,

@@ -3,9 +3,9 @@
 //! processes of their own beside it on its directory. The driver does a
 //! node's other jobs that a harness relies on:
 //!
-//! - it waits out the mark files of a node killed moments ago, which the
-//!   archive and the consensus module would take for a live process's
-//!   ([`mark_files`]);
+//! - it waits out the mark files of a node killed moments ago whose writers
+//!   nothing proves gone, which the archive and the consensus module would
+//!   take for a live process's ([`mark_files`]);
 //! - it prints an up line once the driver runs, which scripts wait for
 //!   before they start the node's other processes ([`Options::up_line`]);
 //! - it prints the driver's error log as errors come ([`ErrorLog`]): the C
@@ -150,17 +150,23 @@ fn now_ms() -> i64 {
 /// consensus module's and its services'. A kill leaves their activity
 /// timestamps fresh, and the Rust archive and consensus module refuse to
 /// start over a file touched within [`LIVENESS_MS`](mark_files::LIVENESS_MS)
-/// ("active mark file detected"); an orderly stop marks them stopped, and
-/// nothing is waited for.
+/// ("active mark file detected") unless its lock proves the writer gone
+/// (`rusteron_cluster_core::markfile::owner`). So only a file whose writer
+/// still holds its lock, or one with no lock naming its writer (Java's, an
+/// earlier Rust component's), is waited for. An orderly stop marks them
+/// stopped, and nothing is waited for.
 pub mod mark_files {
-    use std::fs::{self, File};
-    use std::os::unix::fs::FileExt;
+    use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::thread;
     use std::time::{Duration, Instant};
 
-    use rusteron_cluster_core::markfile;
+    use rusteron_cluster::markfile::{probe_lock, read_header};
+    use rusteron_cluster_core::markfile::{
+        self,
+        owner::{self, Owner},
+    };
 
     /// How long after its last activity a mark file's process counts as
     /// gone: the rule of rusteron's archive and consensus module, and Aeron's.
@@ -193,10 +199,11 @@ pub mod mark_files {
         }
     }
 
-    /// When the last of the node's mark files that a process holds was
-    /// touched, epoch ms: none if none is held.
+    /// When the last of the node's mark files whose writers may still run was
+    /// touched, epoch ms: none if no writer may.
     pub fn last_touched(node_dir: &Path) -> Option<i64> {
-        files(node_dir).iter().filter_map(|file| held_since(file)).max()
+        let now_ms = super::now_ms();
+        files(node_dir).iter().filter_map(|file| held_since(file, now_ms)).max()
     }
 
     /// The node's mark files, in any directory directly under its own: its
@@ -222,20 +229,20 @@ pub mod mark_files {
         files
     }
 
-    /// A mark file's activity timestamp, if a process holds it: its version is
-    /// set (a stopped Rust component zeroes it; one that failed to start
-    /// writes -1) and so is its timestamp (an orderly stop writes -1). Both
-    /// formats, the archive's and the cluster's, start with that header. A
-    /// file too short to read is none: the start is left to judge it.
-    fn held_since(path: &Path) -> Option<i64> {
-        let file = File::open(path).ok()?;
-        let mut version = [0; 4];
-        let mut activity = [0; 8];
-        file.read_exact_at(&mut version, markfile::VERSION_OFFSET as u64).ok()?;
-        file.read_exact_at(&mut activity, markfile::ACTIVITY_TIMESTAMP_OFFSET as u64)
-            .ok()?;
-        let activity = i64::from_le_bytes(activity);
-        (i32::from_le_bytes(version) > 0 && activity > 0).then_some(activity)
+    /// When a mark file's writer was last seen alive, if it may still run
+    /// (`owner`): now, while it holds the file's lock; else its activity
+    /// timestamp, if nothing proves it gone and that is within the liveness
+    /// timeout. None once its lock proves it gone, or the file is stopped,
+    /// unwritten, or too short to read: the start is left to judge it. Both
+    /// formats, the archive's and the cluster's, start with the same header.
+    fn held_since(path: &Path, now_ms: i64) -> Option<i64> {
+        let dir = path.parent()?;
+        let name = path.file_name()?.to_str()?;
+        match owner::owner(read_header(path).as_ref(), &probe_lock(dir, name), now_ms) {
+            Owner::Locked => Some(now_ms),
+            Owner::Active { activity_timestamp_ms } => Some(activity_timestamp_ms),
+            Owner::Gone => None,
+        }
     }
 }
 
@@ -461,11 +468,50 @@ mod tests {
             SEMANTIC_VERSION,
             now - 3 * mark_files::LIVENESS_MS,
         );
-        assert_eq!(
-            mark_files::last_touched(&node.0),
-            Some(now - mark_files::LIVENESS_MS - 1_000)
-        );
+        assert_eq!(mark_files::last_touched(&node.0), None);
         assert!(waited(&node, mark_files::LIVENESS_MS, mark_files::PATIENCE_MS) < Duration::from_millis(100));
+    }
+
+    fn container(start_timestamp_ms: i64) -> rusteron_cluster_core::markfile::ContainerHeader {
+        rusteron_cluster_core::markfile::ContainerHeader {
+            start_timestamp_ms,
+            pid: i64::from(std::process::id()),
+            archive_stream_id: 10,
+            service_stream_id: 104,
+            consensus_module_stream_id: 105,
+            service_id: 0,
+            cluster_id: 0,
+            error_buffer_length: rusteron_cluster_core::markfile::ERROR_BUFFER_MIN_LENGTH as i32,
+            aeron_directory: "/tmp/aeron".into(),
+            control_channel: "aeron:ipc".into(),
+            service_name: "test".into(),
+        }
+    }
+
+    #[test]
+    fn files_whose_locks_prove_their_writers_gone_are_not_waited_for() {
+        let node = Scratch::new();
+        let now = now_ms();
+        let mark =
+            rusteron_cluster::markfile::MarkFile::create(&node.0.join("service"), &container(now), 4_096, now).unwrap();
+        // A kill: the lock goes with the process, the activity stays fresh.
+        drop(mark);
+        assert_eq!(mark_files::last_touched(&node.0), None);
+        assert!(waited(&node, mark_files::LIVENESS_MS, mark_files::PATIENCE_MS) < Duration::from_millis(100));
+    }
+
+    #[test]
+    fn files_whose_writers_hold_their_locks_are_waited_for_however_stale() {
+        let node = Scratch::new();
+        let then = now_ms() - 3 * mark_files::LIVENESS_MS;
+        let _mark =
+            rusteron_cluster::markfile::MarkFile::create(&node.0.join("service"), &container(then), 4_096, then)
+                .unwrap();
+        let waited = waited(&node, mark_files::LIVENESS_MS, 300);
+        assert!(
+            waited >= Duration::from_millis(300) && waited < Duration::from_millis(1_500),
+            "{waited:?}"
+        );
     }
 
     #[test]

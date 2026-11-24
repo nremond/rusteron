@@ -6,15 +6,18 @@
 //! ready; the activity timestamp, every second, that it is alive.
 
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions, TryLockError};
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use rusteron_archive_codecs::mark::{
     WriteBuf, mark_file_header_codec, mark_file_header_codec::MarkFileHeaderEncoder, message_header_codec,
 };
 use rusteron_archive_core::catalog::SEMANTIC_VERSION;
 use rusteron_cluster_core::markfile::error_log;
+use rusteron_cluster_core::markfile::owner::{self, Header, Lock, Owner, Record};
 
 pub const FILE_NAME: &str = "archive-mark.dat";
 pub const LINK_FILE_NAME: &str = "archive-mark.lnk";
@@ -104,6 +107,9 @@ pub fn file_length(error_buffer_length: usize, file_page_size: usize) -> usize {
 /// An archive's mark file, open for as long as the archive runs.
 pub struct ArchiveMarkFile {
     file: File,
+    /// Its lock file, `archive-mark.lck`, locked while the archive runs ([`owner`]).
+    lock: File,
+    terminated: AtomicBool,
     path: PathBuf,
     error_capacity: usize,
     next_error: usize,
@@ -111,32 +117,16 @@ pub struct ArchiveMarkFile {
 }
 
 impl ArchiveMarkFile {
-    /// Creates the mark file in `dir`, refusing to if an archive is alive
-    /// there: one ready, whose activity is younger than the liveness timeout.
+    /// Creates the mark file in `dir`, refusing to if an archive may still
+    /// run there ([`owner`]): one holding the mark file's lock, or, with
+    /// nothing to prove its writer gone, one ready whose activity is younger
+    /// than the liveness timeout. Its lock is held until
+    /// [`signal_terminated`](Self::signal_terminated), or the process ends.
     pub fn create(dir: &Path, header: &ArchiveHeader, file_page_size: usize, now_ms: i64) -> io::Result<Self> {
         std::fs::create_dir_all(dir)?;
         let path = dir.join(FILE_NAME);
-        if let Ok(existing) = File::open(&path) {
-            let mut version = [0; 4];
-            let mut activity = [0; 8];
-            if read_at(&existing, &mut version, VERSION_OFFSET as u64).is_ok()
-                && read_at(&existing, &mut activity, ACTIVITY_TIMESTAMP_OFFSET as u64).is_ok()
-            {
-                let version = i32::from_le_bytes(version);
-                let activity = i64::from_le_bytes(activity);
-                if version > 0 && activity > 0 && now_ms - activity < LIVENESS_TIMEOUT_MS {
-                    return Err(io::Error::new(
-                        io::ErrorKind::AlreadyExists,
-                        format!(
-                            "active mark file detected: {} ({}ms ago)",
-                            path.display(),
-                            now_ms - activity
-                        ),
-                    ));
-                }
-            }
-        }
         let bytes = header.encode()?;
+        let lock = take_lock(dir, &path, &bytes, now_ms)?;
         let error_capacity = header.error_buffer_length as usize;
         let file = OpenOptions::new()
             .read(true)
@@ -155,6 +145,8 @@ impl ArchiveMarkFile {
         }
         Ok(Self {
             file,
+            lock,
+            terminated: AtomicBool::new(false),
             path,
             error_capacity,
             next_error: 0,
@@ -166,7 +158,12 @@ impl ArchiveMarkFile {
         &self.path
     }
 
+    /// The activity timestamp refreshed, unless the archive has signalled
+    /// that it stopped: a successor may be starting over it.
     pub fn update_activity(&self, now_ms: i64) -> io::Result<()> {
+        if self.terminated.load(Ordering::Acquire) {
+            return Ok(());
+        }
         write_at(&self.file, &now_ms.to_le_bytes(), ACTIVITY_TIMESTAMP_OFFSET as u64)
     }
 
@@ -204,11 +201,83 @@ impl ArchiveMarkFile {
         Ok(true)
     }
 
-    /// The archive stopped: no longer alive, for whoever starts next.
+    /// The archive stopped: no longer alive and its lock let go, for whoever
+    /// starts next.
     pub fn signal_terminated(&self) -> io::Result<()> {
+        self.terminated.store(true, Ordering::Release);
         write_at(&self.file, &(-1i64).to_le_bytes(), ACTIVITY_TIMESTAMP_OFFSET as u64)?;
-        self.file.sync_all()
+        self.file.sync_all()?;
+        self.lock.unlock()
     }
+}
+
+/// How long a start tries for its lock while a tool looks at it (a probe
+/// holds it a moment: `rusteron_cluster::markfile::probe_lock`).
+const LOCK_PATIENCE: Duration = Duration::from_millis(250);
+
+/// The lock of the mark file at `path` in `dir`, taken for an archive about
+/// to write it with header `bytes` ([`owner`]). Refused if a live process
+/// holds it, or if the mark file's writer may still run by its activity
+/// timestamp and nothing proves it gone. Taken, it records this writer.
+fn take_lock(dir: &Path, path: &Path, bytes: &[u8], now_ms: i64) -> io::Result<File> {
+    let lock_name = owner::lock_file_name(FILE_NAME);
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(dir.join(&lock_name))?;
+    let deadline = Instant::now() + LOCK_PATIENCE;
+    loop {
+        match lock.try_lock() {
+            Ok(()) => break,
+            Err(TryLockError::WouldBlock) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(5)),
+            Err(TryLockError::WouldBlock) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    format!(
+                        "active mark file detected: {} (a live process holds {lock_name})",
+                        path.display()
+                    ),
+                ));
+            }
+            Err(TryLockError::Error(e)) => return Err(e),
+        }
+    }
+    let found = Lock::Free(read_record(&lock));
+    if let Owner::Active { activity_timestamp_ms } = owner::owner(read_header(path).as_ref(), &found, now_ms) {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!(
+                "active mark file detected: {} ({}ms ago)",
+                path.display(),
+                now_ms - activity_timestamp_ms
+            ),
+        ));
+    }
+    let writer = Header::read(bytes)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "the mark file's header is too short"))?
+        .record();
+    lock.set_len(0)?;
+    write_at(&lock, writer.encode().as_bytes(), 0)?;
+    lock.sync_data()?;
+    Ok(lock)
+}
+
+/// The writer a lock file records, if it records one.
+fn read_record(lock: &File) -> Option<Record> {
+    let length = usize::try_from(lock.metadata().ok()?.len()).ok()?.min(64);
+    let mut bytes = vec![0; length];
+    read_at(lock, &mut bytes, 0).ok()?;
+    Record::parse(std::str::from_utf8(&bytes).ok()?)
+}
+
+/// The header of the mark file at `path`, if it is there and long enough.
+fn read_header(path: &Path) -> Option<Header> {
+    let file = File::open(path).ok()?;
+    let mut bytes = [0; owner::HEADER_READ_LENGTH];
+    read_at(&file, &mut bytes, 0).ok()?;
+    Header::read(&bytes)
 }
 
 #[cfg(test)]
@@ -268,6 +337,55 @@ mod tests {
         assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
         mark.signal_terminated().unwrap();
         ArchiveMarkFile::create(&dir, &header(), 4_096, 100_600).expect("a stopped archive is replaced");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("rusteron-archive-markfile-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn the_header_names_its_writer_where_a_cluster_components_does() {
+        let bytes = header().encode().unwrap();
+        assert_eq!(
+            Header::read(&bytes).map(|h| h.record()),
+            Some(Record {
+                pid: 4_242,
+                start_timestamp_ms: 1_700_000_000_000
+            })
+        );
+    }
+
+    #[test]
+    fn a_killed_archive_is_replaced_at_once_and_a_paused_one_never() {
+        let dir = temp_dir("killed");
+        let mark = ArchiveMarkFile::create(&dir, &header(), 4_096, 100_000).unwrap();
+        let err = ArchiveMarkFile::create(&dir, &header(), 4_096, 100_000 + 3 * LIVENESS_TIMEOUT_MS)
+            .err()
+            .expect("refused while its lock is held");
+        assert!(
+            err.to_string().contains("a live process holds archive-mark.lck"),
+            "{err}"
+        );
+        // A kill: the lock goes with the process, the activity stays fresh.
+        drop(mark);
+        ArchiveMarkFile::create(&dir, &header(), 4_096, 100_500).expect("its lock proves the writer gone");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn without_a_lock_naming_its_writer_an_archive_is_judged_by_its_activity() {
+        let dir = temp_dir("unlocked");
+        drop(ArchiveMarkFile::create(&dir, &header(), 4_096, 100_000).unwrap());
+        // As Java's archive, or an earlier Rust one, leaves it: no lock file.
+        std::fs::remove_file(dir.join("archive-mark.lck")).unwrap();
+        let err = ArchiveMarkFile::create(&dir, &header(), 4_096, 100_500)
+            .err()
+            .expect("refused");
+        assert!(err.to_string().contains("(500ms ago)"), "{err}");
+        ArchiveMarkFile::create(&dir, &header(), 4_096, 100_000 + LIVENESS_TIMEOUT_MS).expect("past the timeout");
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

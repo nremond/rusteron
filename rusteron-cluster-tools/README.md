@@ -4,7 +4,7 @@ Tools to run and check an Aeron Cluster whose nodes are processes of their own, 
 
 | Binary | What it does |
 |---|---|
-| `node_driver` | A node's own process: Aeron's C media driver. It first waits out the mark files a node killed moments ago left. It prints an up line scripts wait for and prints the driver's error log as errors come. On SIGTERM it closes in order and deletes its directory. It also serves as a client's driver. |
+| `node_driver` | A node's own process: Aeron's C media driver. It first waits out the mark files a node killed moments ago left, unless their locks prove their writers gone, as they do for rusteron's archive, consensus module, backup and container. It prints an up line scripts wait for and prints the driver's error log as errors come. On SIGTERM it closes in order and deletes its directory. It also serves as a client's driver. |
 | `cluster_tool` | `status`: each node's role, module state, election state, term and commit position, read from its driver's counters with no client of any driver; `--await-leader` waits for a leader. `snapshot` and `standby-snapshot` set the leader's control toggle, as Aeron's `ClusterTool` does. |
 | `log_check` | Every node's cluster log compared byte for byte as its archive replays it, members' and standbys' alike: a check to end a test run with. |
 
