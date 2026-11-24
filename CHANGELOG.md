@@ -4,6 +4,25 @@ Main changes, newest first, grouped by published crate version. Release-only
 commits, build logs, and changes later reverted or superseded are omitted.
 Early history predating the available release tags is grouped separately.
 
+## Unreleased: Aeron Cluster in Rust (this fork's `cluster` branch)
+
+On 0.3.2, with Aeron C 1.54.2. The existing crates are unchanged. All of these crates are
+wire- and on-disk-compatible with Aeron 1.54.2.
+
+- Added the Aeron Cluster crates:
+  - the service container and the consensus module as sans-IO cores (`rusteron-cluster-core`,
+    `rusteron-consensus-core`);
+  - their shells on Aeron's C client, with the cluster client and backup (`rusteron-cluster`);
+  - their SBE codecs (`rusteron-cluster-codecs`).
+- Added Aeron Archive's server for what a cluster asks of its archive (`rusteron-archive-server`),
+  its sans-IO core (`rusteron-archive-core`) and its SBE codecs (`rusteron-archive-codecs`).
+- Added a warm standby (`rusteron-cluster-standby`). It runs the service on the log a cluster
+  backup records, takes standby snapshots the members load, and seeds a new cluster after a disaster.
+- Added tools to run and check a cluster of separate processes (`rusteron-cluster-tools`).
+- Added a deterministic simulator (`rusteron-cluster-sim`) and tests beside Java Aeron Cluster
+  1.54.2 (`rusteron-cluster-interop`). Neither is published.
+- Valgrind runs only on the crates that call Aeron C.
+
 ## 0.3.2
 
 - Breaking: restored the 0.3.0 driver API.

@@ -10,6 +10,11 @@ for IPC and UDP messaging, recording, replay and replication. It exposes the C A
 minimal abstraction, optimised for production use in latency-sensitive environments,
 and manages resource ownership and callback lifetimes.
 
+> **This fork's `cluster` branch** adds Aeron Cluster and the Aeron Archive server in Rust,
+> wire- and on-disk-compatible with Aeron 1.54.2. They are not part of upstream rusteron: see
+> [Aeron Cluster in Rust](#aeron-cluster-in-rust).
+> [![CI (cluster)](https://github.com/nremond/rusteron/actions/workflows/ci.yml/badge.svg?branch=cluster)](https://github.com/nremond/rusteron/actions/workflows/ci.yml?query=branch%3Acluster)
+
 ## Design goals
 
 - Match the safety and cost of the Aeron Java and C++ clients. Prefer compile-time
@@ -44,6 +49,59 @@ It is developed under the GSR GitHub organisation. We welcome contributions, fee
 
 `rusteron-archive` includes the transport APIs, so applications using it do not
 need a separate `rusteron-client` dependency.
+
+## Aeron Cluster in Rust
+
+This fork re-implements Aeron Cluster in Rust on Aeron's C client, with Java Aeron 1.54.2 as the
+oracle: the clustered service container, the consensus module, the cluster client and backup, and
+the Aeron Archive server a cluster records to. Unlike the wrappers above, these crates rewrite
+Aeron's logic rather than bind to it. Rust and Java nodes can run in one cluster, on the same log,
+and their files on disk follow Java's formats.
+
+Each component is a sans-IO core (no clock, no randomness, no I/O) driven by a thin shell on
+Aeron's C client. A deterministic simulator drives the consensus module's core under seeded faults.
+
+| Crate | What it is |
+| --- | --- |
+| [rusteron-cluster](rusteron-cluster/README.md) | The shells: the service container, the cluster client, the consensus module (`consensus_module`) and the cluster backup (`cluster_backup`) |
+| [rusteron-cluster-core](rusteron-cluster-core/README.md) | The service container's sans-IO core |
+| [rusteron-consensus-core](rusteron-consensus-core/README.md) | The consensus module's sans-IO core |
+| [rusteron-cluster-codecs](rusteron-cluster-codecs/README.md) | Aeron Cluster 1.54.2's SBE codecs |
+| [rusteron-archive-server](rusteron-archive-server/README.md) | Aeron Archive's server (`aeron_archive`): what a cluster asks of its archive |
+| [rusteron-archive-core](rusteron-archive-core/README.md) | The archive server's sans-IO core: the catalog, the segment files, the control protocol |
+| [rusteron-archive-codecs](rusteron-archive-codecs/README.md) | Aeron Archive 1.54.2's SBE codecs |
+| [rusteron-cluster-standby](rusteron-cluster-standby/README.md) | A warm standby: a cluster backup that also runs the service, takes snapshots the members load, and seeds a new cluster after a disaster |
+| [rusteron-cluster-tools](rusteron-cluster-tools/README.md) | Run and check a cluster of separate processes: a node's media driver, a log comparison, status and snapshots, and the scripts |
+| [rusteron-cluster-sim](rusteron-cluster-sim/README.md) | A deterministic simulator of a cluster of Rust consensus modules (not published) |
+| [rusteron-cluster-interop](rusteron-cluster-interop/README.md) | Tests beside Java Aeron Cluster 1.54.2, and the scenario scripts (not published) |
+
+**Tested against Java 1.54.2:**
+
+- Aeron's own tests, with Rust consensus modules on every node: `ClusterTest` passes 75 of its 94
+  cases, `ClusterBackupTest` 23 of 25 on the Rust backup, and `RustClientTest` and
+  `StandbySnapshotNoticeTest` every case but five. Each case left needs something out of scope,
+  below.
+- The C archive client's tests: 61 of 80 pass on the Rust archive. The others make requests a
+  cluster never makes.
+- Ten scenarios, each on six setups mixing Java's and Rust's consensus modules, archives and
+  clients.
+- The simulator: 20,000 seeds with faults and 5,000 with held links.
+- The standby, with no JVM: its state and log against the members', a member restarted from its
+  snapshot, and a new cluster seeded from it.
+
+**Out of scope:** dynamic membership, consensus module extensions, authenticators other than the
+default, IPC ingress, recording-log validation, and the archive requests a cluster does not make.
+Two behaviours differ from Java 1.54.2 on purpose, each reported upstream: a stopped catch-up
+replay is closed rather than revoked ([aeron-io/aeron#2259](https://github.com/aeron-io/aeron/issues/2259)),
+and the archive starts over a recording with no frame after a page-aligned start
+([aeron-io/aeron#2261](https://github.com/aeron-io/aeron/issues/2261)).
+
+**Design notes:** the [service container](rusteron-cluster/docs/design.md), the
+[consensus module](rusteron-cluster/docs/consensus.md), the [client](rusteron-cluster/docs/client.md),
+the [backup](rusteron-cluster/docs/backup.md), the [archive server](rusteron-archive-server/docs/design.md)
+and the [standby](rusteron-cluster-standby/docs/design.md). To run a cluster of separate processes,
+see [rusteron-cluster-tools](rusteron-cluster-tools/README.md); the scenarios are in
+`rusteron-cluster-interop/scripts`.
 
 ## Getting started
 
