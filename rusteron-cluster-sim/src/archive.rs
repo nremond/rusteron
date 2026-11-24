@@ -6,8 +6,8 @@
 
 use std::collections::{BTreeMap, VecDeque};
 
-use rusteron_archive_core::catalog::{Catalog, Descriptor};
-use rusteron_archive_core::protocol::{self, Code, Request, Signal};
+use rusteron_archive::catalog::{Catalog, Descriptor};
+use rusteron_archive::control_session_adapter::{self, Code, Request, Signal};
 
 /// The recordings' term length, as the simulated log channel sets it.
 pub const TERM_LENGTH: i32 = 64 * 1024;
@@ -195,7 +195,7 @@ impl SimArchive {
     }
 
     fn ok(&mut self, correlation_id: i64, relevant_id: i64) {
-        self.responses.push_back(protocol::control_response(
+        self.responses.push_back(control_session_adapter::control_response(
             self.control_session_id,
             correlation_id,
             relevant_id,
@@ -205,7 +205,7 @@ impl SimArchive {
     }
 
     fn error(&mut self, correlation_id: i64, code: i64, message: &str) {
-        self.responses.push_back(protocol::control_response(
+        self.responses.push_back(control_session_adapter::control_response(
             self.control_session_id,
             correlation_id,
             code,
@@ -215,7 +215,7 @@ impl SimArchive {
     }
 
     fn signal(&mut self, correlation_id: i64, recording_id: i64, subscription_id: i64, position: i64, signal: Signal) {
-        self.responses.push_back(protocol::recording_signal(
+        self.responses.push_back(control_session_adapter::recording_signal(
             self.control_session_id,
             correlation_id,
             recording_id,
@@ -346,7 +346,7 @@ impl SimArchive {
     }
 
     fn handle_request(&mut self, message: &[u8]) {
-        let Ok(request) = protocol::decode_request(message) else {
+        let Ok(request) = control_session_adapter::decode_request(message) else {
             return;
         };
         match request {
@@ -438,7 +438,7 @@ impl SimArchive {
             } => match self.recordings.get(&recording_id) {
                 Some(r) => {
                     let bytes = descriptor_bytes(r);
-                    self.responses.push_back(protocol::recording_descriptor(
+                    self.responses.push_back(control_session_adapter::recording_descriptor(
                         self.control_session_id,
                         correlation_id,
                         &bytes,
@@ -446,7 +446,7 @@ impl SimArchive {
                 }
                 None => {
                     let cs = self.control_session_id;
-                    self.responses.push_back(protocol::control_response(
+                    self.responses.push_back(control_session_adapter::control_response(
                         cs,
                         correlation_id,
                         recording_id,

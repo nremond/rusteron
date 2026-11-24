@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 
-use rusteron_archive_core::conductor::Offer;
+use rusteron_archive::archive_conductor::Offer;
 use rusteron_cluster_core::log::{Fragment, PollAction};
 use rusteron_cluster_core::node_state::{self, NodeState};
 use rusteron_cluster_core::position::UNFRAGMENTED;

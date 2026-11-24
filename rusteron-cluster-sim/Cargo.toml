@@ -9,7 +9,7 @@ description = "A deterministic simulator of an Aeron Cluster of Rust consensus m
 publish = false
 
 [dependencies]
-rusteron-archive-core = { path = "../rusteron-archive-core", version = "0.1.0" }
+rusteron-archive = { path = "../rusteron-archive", version = "0.3.2" }
 rusteron-cluster-codecs = { path = "../rusteron-cluster-codecs", version = "0.1.0" }
 rusteron-cluster-core = { path = "../rusteron-cluster-core", version = "0.1.0" }
 rusteron-consensus-core = { path = "../rusteron-consensus-core", version = "0.1.0" }

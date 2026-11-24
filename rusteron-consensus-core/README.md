@@ -23,7 +23,7 @@ Its building blocks, each Java's behaviour:
 
 `tests/election.rs` runs one member of three, the test playing the other two on the consensus stream and the leader's log: the scenarios of Java's `ElectionTest` and `ConsensusModuleAgentTest` a plain cluster meets. A member canvasses; a candidate with every vote leads and publishes its term, one without a majority canvasses again, only an appointed leader stands; votes go to a log no shorter; a leader commits what a quorum appended, steps down without an active quorum, replays its log to a follower catching up and terminates once every follower acked; a follower joins the live log, follows it up to the commit position it is told, starts an election without word from the leader, stops where the leader terminates, catches up on the leader's log, replicates a term it lacks from the leader's archive, and truncates a log ahead of the new leader.
 
-The module's files (recording log, node state, mark file) and counters are `rusteron-cluster-core`'s; its archive client is `rusteron-archive-core`'s.
+The module's files (recording log, node state, mark file) and counters are `rusteron-cluster-core`'s; its archive client is `rusteron-archive`'s.
 
 ## Licence
 

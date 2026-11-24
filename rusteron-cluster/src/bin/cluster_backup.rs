@@ -18,7 +18,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rusteron_archive_core::channel::parse_size;
+use rusteron_archive::channel_uri::parse_size;
 use rusteron_cluster::Idle;
 use std::io::Write;
 

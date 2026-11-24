@@ -22,9 +22,9 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use rusteron_archive_core::channel::ChannelUri;
-use rusteron_archive_core::protocol::{Signal, error_code};
-use rusteron_archive_core::session::{self as archive, ClientSession, Event as ArchiveEvent, Link};
+use rusteron_archive::channel_uri::ChannelUri;
+use rusteron_archive::client::aeron_archive::{self as archive, ClientSession, Event as ArchiveEvent, Link};
+use rusteron_archive::control_session_adapter::{Signal, error_code};
 use rusteron_cluster_codecs::cluster::backup_response_codec;
 use rusteron_cluster_core::client::EventCode;
 use rusteron_cluster_core::client::codec::{self as client_codec, Egress, PROTOCOL_SEMANTIC_VERSION};

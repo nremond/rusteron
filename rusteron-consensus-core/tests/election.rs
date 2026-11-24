@@ -3,7 +3,7 @@
 //! the scenarios of Java's `ElectionTest` and `ConsensusModuleAgentTest`
 //! a plain cluster runs into.
 
-use rusteron_archive_core::protocol::{Request, Signal};
+use rusteron_archive::control_session_adapter::{Request, Signal};
 use rusteron_cluster_core::recording_log::{ENTRY_TYPE_TERM, RecordingLog};
 use rusteron_consensus_core::config::Config;
 use rusteron_consensus_core::consensus::{self, APPEND_POSITION_FLAG_CATCHUP, ConsensusMessage, NewLeadershipTerm};

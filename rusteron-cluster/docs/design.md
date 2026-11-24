@@ -184,7 +184,7 @@ Not measured here: replication. On one node the commit is the local archive reco
 1. **An application's engine as a service**: its state machine behind `ClusteredService`, its snapshotter behind `channel_source`, `Apply::Retry` onto its ring, on the Java consensus module first: done, 2026-10-28.
 2. **The archive's async proxy** in the shell, so a snapshot's connect, replay and record never hold the duty cycle.
 3. **Three nodes across machines**, once the engine runs: the container's figures here are a node's, and replication is where a commit's time goes.
-4. **M2, the archive server**, the cluster's subset: done, 2026-10-29; `rusteron-archive-server/docs/design.md`.
+4. **M2, the archive server**, the cluster's subset: done, 2026-10-29; `rusteron-archive/docs/design.md`.
 5. **M3, the consensus module**, among Java nodes, then alone; and the simulator: the cores in virtual time, Aeron's streams modelled at the positions they show: done, 2026-10-30; `consensus.md`.
 6. **M4, the cluster client**, Java's `AeronCluster` in Rust, measured against Java's: done, 2026-10-31; `client.md`.
 7. **M5, no JVM anywhere**: Java's `ClusterBackup` in Rust (`backup.md`), so that a cluster, its clients and a standby run on the fork's pieces alone, Java's tools the oracle: done, 2026-11-02.

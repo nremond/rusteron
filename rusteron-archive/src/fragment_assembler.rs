@@ -2,8 +2,16 @@
 //! `BoundedLogAdapter` does with a `BufferBuilder` for the cluster's log.
 
 #![forbid(unsafe_code)]
-// The crate allows every clippy lint for its generated bindings; this module is checked.
-#![warn(clippy::all)]
+// The crate allows these lints for its generated bindings; this module is checked.
+#![warn(
+    clippy::all,
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    unsafe_op_in_unsafe_fn,
+    unused_unsafe,
+    unused_variables
+)]
 
 use crate::logbuffer::{BEGIN_FRAGMENT, END_FRAGMENT, FRAME_ALIGNMENT, HEADER_LENGTH, UNFRAGMENTED, align};
 

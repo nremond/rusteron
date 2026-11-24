@@ -33,7 +33,7 @@ Out of scope: Java's agent runner and invoker settings and thread factory (the s
 
 ## 3. The design
 
-**The core** (`rusteron-consensus-core::backup`, `forbid(unsafe_code)`): `ClusterBackupAgent` is Java's agent as one state machine, epoch milliseconds entering once per duty cycle and a seeded generator for the shuffle and the recording's session id. Its two archives are `rusteron-archive-core::session::ClientSession`s, the consensus module's archive client. Events go in (`on_consensus_message`, `on_archive_message`, `on_io`); offers, counters and the counter lookups Java does at once go through `Ports`; publications, subscriptions, archive links and recording-log writes are `Action`s; the listener's calls are `Event`s.
+**The core** (`rusteron-consensus-core::backup`, `forbid(unsafe_code)`): `ClusterBackupAgent` is Java's agent as one state machine, epoch milliseconds entering once per duty cycle and a seeded generator for the shuffle and the recording's session id. Its two archives are `rusteron-archive::session::ClientSession`s, the consensus module's archive client. Events go in (`on_consensus_message`, `on_archive_message`, `on_io`); offers, counters and the counter lookups Java does at once go through `Ports`; publications, subscriptions, archive links and recording-log writes are `Action`s; the listener's calls are `Event`s.
 
 **The shell** (`rusteron-cluster::backup`, binary `cluster_backup`) runs it on one thread with the C client's conductor invoked there every millisecond, as the consensus module's shell does, with Java's `ClusterBackup.Context` options. A member's archive with a response endpoint is reached on a response channel: the subscription first, the publication then naming it, as Java's `AsyncConnect` does. To embed it, `spawn(ctx, listener)` runs a backup on a thread of its own with an Aeron client of its own, and returns once it has started; `ClusterBackupNode::launch` and `run` run one on the caller's thread. `BackupListener` is Java's `ClusterBackupEventsListener`, called on the backup's thread, plus `on_terminated`.
 
@@ -77,7 +77,7 @@ None of the backup's own: it records the log at the pace of the member archive's
 cargo test -p rusteron-consensus-core --test backup
 cargo run -p rusteron-cluster-sim --release --bin cluster_sim -- --seeds 0..1000 --backup
 cargo build --release -p rusteron-media-driver --bin media_driver --features static
-cargo build --release -p rusteron-archive-server --features static
+cargo build --release -p rusteron-archive --features static,server
 cargo build --release -p rusteron-cluster --features static --bin cluster_backup --bin consensus_module
 SCENARIO=failover rusteron-cluster-interop/scripts/backup.sh
 CM=rust SCENARIO=failover rusteron-cluster-interop/scripts/backup.sh

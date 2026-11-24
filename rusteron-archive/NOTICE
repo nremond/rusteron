@@ -1,0 +1,21 @@
+rusteron-archive
+
+The Aeron Archive client bindings (src/lib.rs and the code generated from
+Aeron's C headers) are licensed under the MIT license or the Apache License,
+Version 2.0, at your option.
+
+The Aeron Archive server (src/archive*.rs, src/archive_conductor, src/catalog.rs,
+src/channel_uri.rs, src/client, src/control_session_adapter.rs,
+src/recording_writer.rs, src/replay_session, src/segments.rs, src/testkit.rs),
+the helpers it shares with the cluster (src/logbuffer.rs,
+src/fragment_assembler.rs, src/mark_file.rs, src/distinct_error_log.rs), the
+SBE codecs (src/codecs, generated from schemas/) and their tests re-implement,
+in Rust, parts of Aeron (https://github.com/aeron-io/aeron), version 1.54.2,
+and of Agrona (https://github.com/aeron-io/agrona): Aeron Archive's catalog and
+segment file formats, its protocol, and its server's behaviour, from their
+Java sources:
+
+    Copyright 2014-2025 Real Logic Limited.
+    Licensed under the Apache License, Version 2.0.
+
+Those files are licensed under the Apache License, Version 2.0 only.

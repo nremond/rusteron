@@ -4,7 +4,7 @@
 //! their vote, when it last heard from them); and the quorum arithmetic
 //! Java's static helpers do over them.
 
-use rusteron_archive_core::channel::ChannelUri;
+use rusteron_archive::channel_uri::ChannelUri;
 
 /// Aeron's null for ids and positions.
 pub const NULL_VALUE: i64 = -1;

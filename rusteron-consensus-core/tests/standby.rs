@@ -9,7 +9,7 @@
 //! snapshots when the standby's archive does not deliver, or no longer has
 //! the set.
 
-use rusteron_archive_core::protocol::{Replicate, Request, Signal};
+use rusteron_archive::control_session_adapter::{Replicate, Request, Signal};
 use rusteron_cluster_codecs::cluster::{
     ReadBuf, event_code::EventCode, message_header_codec::MessageHeaderDecoder, session_event_codec,
 };

@@ -205,7 +205,7 @@ cluster_tool() { # node command
   "$JAVA" -cp "$JAR" "${JVM_FLAGS[@]}" io.aeron.cluster.ClusterTool "$WORK/node$1/cluster" "$2"
 }
 
-[[ $ARCHIVE != rust || -x "$ARCHIVE_BIN" ]] || fail "build the archive: cargo build -p rusteron-archive-server --features static"
+[[ $ARCHIVE != rust || -x "$ARCHIVE_BIN" ]] || fail "build the archive: cargo build -p rusteron-archive --features static,server"
 [[ -z "$CM_NODES" || -x "$CM_BIN" ]] || fail "build the consensus module: cargo build -p rusteron-cluster --features static --bin consensus_module"
 [[ $CLIENT != rust || -x "$ECHO_CLIENT" ]] || fail "build the client: cargo build -p rusteron-cluster-interop --features static"
 [[ -x "$DRIVER" && -x "$RUST_NODE" ]] || fail "build first: cargo build -p rusteron-media-driver --bin media_driver --features static && cargo build -p rusteron-cluster-interop --features static"

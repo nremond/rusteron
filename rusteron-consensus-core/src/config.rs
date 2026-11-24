@@ -1,7 +1,7 @@
 //! How a consensus module runs: what Java's `ConsensusModule.Context` sets
 //! for a plain cluster, with Java's defaults.
 
-use rusteron_archive_core::channel::ChannelUri;
+use rusteron_archive::channel_uri::ChannelUri;
 use rusteron_cluster_codecs::cluster::cluster_time_unit::ClusterTimeUnit;
 
 /// The service id the module's own entries take.

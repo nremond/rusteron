@@ -13,7 +13,7 @@ scripts/repeat.sh 20
 
 Scenarios: `basic`, `restart`, `timers`, `failover` (3 nodes), `marks`, `dead-service`; what each does and what passing means is in `scripts/differential.sh` and `../rusteron-cluster/docs/design.md` §5. `scripts/skeleton.sh` runs a Java cluster alone on the C driver.
 
-`ARCHIVE=rust` puts the Rust archive (`aeron_archive`, from `rusteron-archive-server`) in place of Java's, and `CM=rust` the Rust consensus module (`consensus_module`, from `rusteron-cluster`) in place of Java's, on every node.
+`ARCHIVE=rust` puts the Rust archive (`aeron_archive`, from `rusteron-archive`) in place of Java's, and `CM=rust` the Rust consensus module (`consensus_module`, from `rusteron-cluster`) in place of Java's, on every node.
 
 `scripts/backup.sh` runs the Rust cluster backup (`cluster_backup`) beside Java's ClusterBackup (`java/JavaBackup.java`) on one cluster, Java's modules or Rust's (`CM=rust`), and checks that both hold the leader's log byte for byte (`java/BackupCheck.java`, CRC-32C of replays) with the same recording-log entries; `SCENARIO=failover` kills the leader on the way. It runs on the release builds.
 

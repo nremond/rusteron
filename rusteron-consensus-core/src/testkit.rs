@@ -7,8 +7,8 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
-use rusteron_archive_core::catalog::{Catalog, Descriptor};
-use rusteron_archive_core::protocol::{self as archive_protocol, Code, Request, Signal};
+use rusteron_archive::catalog::{Catalog, Descriptor};
+use rusteron_archive::control_session_adapter::{self as archive_protocol, Code, Request, Signal};
 use rusteron_cluster_codecs::cluster::{
     boolean_type::BooleanType, join_log_codec, request_service_ack_codec, service_ack_codec,
     service_termination_position_codec,

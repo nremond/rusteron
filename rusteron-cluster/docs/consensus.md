@@ -1,6 +1,6 @@
 # Aeron Cluster in Rust: the consensus module
 
-The third milestone of Aeron Cluster in Rust (see `design.md` for the service container and `rusteron-archive-server/docs/design.md` for the archive): the consensus module, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23), as a sans-IO state machine driven by a shell on Aeron's C client. Where Java's election can lose committed entries, the module follows Raft's rules instead.
+The third milestone of Aeron Cluster in Rust (see `design.md` for the service container and `rusteron-archive/docs/design.md` for the archive): the consensus module, wire- and on-disk-compatible with Java Aeron 1.54.2 (1.53.3 until 2026-11-23), as a sans-IO state machine driven by a shell on Aeron's C client. Where Java's election can lose committed entries, the module follows Raft's rules instead.
 
 | | |
 |---|---|
@@ -28,7 +28,7 @@ Out of scope: taking and sending standby snapshots (a standby's work: Aeron Prem
 
 **The shell** (`rusteron-cluster::consensus`, binary `consensus_module`) runs it on one thread with the C client's conductor invoked there, as the service container's shell does, with Java's `ConsensusModule.Context` flags.
 
-**The archive client session** (`rusteron-archive-core::session`) is the module's link to its archive, in the shell, the testkit and the simulator alike.
+**The archive client session** (`rusteron-archive::session`) is the module's link to its archive, in the shell, the testkit and the simulator alike.
 
 ## 4. Choices, and why
 

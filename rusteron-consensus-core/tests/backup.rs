@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use rusteron_archive_core::protocol::{self as archive_protocol, Code, Request, Signal, error_code};
+use rusteron_archive::control_session_adapter::{self as archive_protocol, Code, Request, Signal, error_code};
 use rusteron_cluster_core::client::EventCode;
 use rusteron_cluster_core::client::codec::PROTOCOL_SEMANTIC_VERSION;
 use rusteron_cluster_core::recording_log::{RecordingLog, SERVICE_ID, Snapshot};

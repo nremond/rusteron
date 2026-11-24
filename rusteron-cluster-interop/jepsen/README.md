@@ -19,7 +19,7 @@ Either way, the service is Java's container, running `ListAppendService`. Client
 - **Nodes** are Docker containers n1..n3 (`scripts/cluster.sh`), at 10.77.0.11 onwards, on a bridge network whose host side, 10.77.0.1, is where Jepsen and its clients run.
 - **Their image is empty.** The host's `/usr` and `/etc` are mounted read-only, so a node runs the host's JDK and tools (`iptables`, `pkill`) and nothing is pulled or installed. The suite, the Maven repository and rusteron's `target/` are mounted read-only too. Each node's data is a tmpfs at `/data`.
 - **Commands** reach the nodes through `docker exec` (`docker.clj`), not SSH.
-- **Builds.** The Java side and the classpath come from Maven (`pom.xml`): Jepsen 0.3.14, and the Aeron that `AERON_VERSION` names, 1.54.2 by default. Java members run any version Maven has. Rust members need 1.54.2, the version rusteron's crates follow, and rusteron's debug `media_driver`, `aeron_archive` and `consensus_module`, built with `--features static` (`cargo build --features static -p rusteron-media-driver -p rusteron-archive-server -p rusteron-cluster --bins`).
+- **Builds.** The Java side and the classpath come from Maven (`pom.xml`): Jepsen 0.3.14, and the Aeron that `AERON_VERSION` names, 1.54.2 by default. Java members run any version Maven has. Rust members need 1.54.2, the version rusteron's crates follow, and rusteron's debug `media_driver`, `aeron_archive` and `consensus_module`, built with `--features static` (`cargo build --features static -p rusteron-media-driver -p rusteron-archive -p rusteron-cluster --bins`).
 - **Requirements:** Docker, Maven and a JDK of 21 or later on the host.
 
 ## What it checks

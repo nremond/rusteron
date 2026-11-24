@@ -129,6 +129,28 @@ pub mod fragment_assembler;
 pub mod logbuffer;
 pub mod mark_file;
 
+// Aeron Archive's server in Rust, as Aeron's `io.aeron.archive` package lays it out, wire- and
+// on-disk-compatible with Aeron 1.54.2. Each class is a sans-IO state machine (no clock, no randomness,
+// no I/O); with the `server` feature, its I/O on Aeron's C client is beside it, and `archive` runs them.
+#[cfg(feature = "server")]
+pub mod archive;
+pub mod archive_conductor;
+pub mod archive_counters;
+#[cfg(feature = "server")]
+pub mod archive_mark_file;
+pub mod archive_tool;
+pub mod catalog;
+pub mod channel_uri;
+pub mod client;
+pub mod codecs;
+pub mod control_session_adapter;
+#[cfg(feature = "server")]
+pub mod recording_writer;
+pub mod replay_session;
+pub mod segments;
+#[cfg(feature = "testkit")]
+pub mod testkit;
+
 /// A recording descriptor is borrowed from a C stack local that Aeron frees once the callback
 /// returns, so it cannot be kept, nor cloned or rewrapped and kept. Copying a field out is fine:
 ///

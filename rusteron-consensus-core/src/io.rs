@@ -11,7 +11,7 @@
 //!   what came of them as an [`Io`].
 
 /// What an offer came to.
-pub use rusteron_archive_core::conductor::Offer;
+pub use rusteron_archive::archive_conductor::Offer;
 
 /// A client's egress publication, the module's handle for it: sessions
 /// redirected or rejected have no cluster session id yet.

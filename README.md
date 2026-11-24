@@ -67,9 +67,9 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 | [rusteron-cluster-core](rusteron-cluster-core/README.md) | The service container's sans-IO core |
 | [rusteron-consensus-core](rusteron-consensus-core/README.md) | The consensus module's sans-IO core |
 | [rusteron-cluster-codecs](rusteron-cluster-codecs/README.md) | Aeron Cluster 1.54.2's SBE codecs |
-| [rusteron-archive-server](rusteron-archive-server/README.md) | Aeron Archive's server (`aeron_archive`): what a cluster asks of its archive |
-| [rusteron-archive-core](rusteron-archive-core/README.md) | The archive server's sans-IO core: the catalog, the segment files, the control protocol |
-| [rusteron-archive-codecs](rusteron-archive-codecs/README.md) | Aeron Archive 1.54.2's SBE codecs |
+| [rusteron-archive](rusteron-archive/README.md) | Aeron Archive's server (`aeron_archive`): what a cluster asks of its archive |
+| [rusteron-archive](rusteron-archive/README.md) | The archive server's sans-IO core: the catalog, the segment files, the control protocol |
+| [rusteron-archive](rusteron-archive/README.md) | Aeron Archive 1.54.2's SBE codecs |
 | [rusteron-cluster-sim](rusteron-cluster-sim/README.md) | A deterministic simulator of a cluster of Rust consensus modules (not published) |
 | [rusteron-cluster-interop](rusteron-cluster-interop/README.md) | Tests beside Java Aeron Cluster 1.54.2, and the scenario scripts (not published) |
 
@@ -97,7 +97,7 @@ and the archive starts over a recording with no frame after a page-aligned start
 
 **Design notes:** the [service container](rusteron-cluster/docs/design.md), the
 [consensus module](rusteron-cluster/docs/consensus.md), the [client](rusteron-cluster/docs/client.md),
-the [backup](rusteron-cluster/docs/backup.md) and the [archive server](rusteron-archive-server/docs/design.md).
+the [backup](rusteron-cluster/docs/backup.md) and the [archive server](rusteron-archive/docs/design.md).
 The scenarios are in `rusteron-cluster-interop/scripts`.
 
 ## Getting started
