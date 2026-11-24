@@ -5,9 +5,7 @@
 //! rust_service_node AERON_DIR CLUSTER_DIR SERVICE_ID TRACE_PATH [silent] [no-service-messages]
 //! ```
 //!
-//! `silent` answers no client. `no-service-messages` sends none, for a
-//! cluster with a standby (rusteron-cluster-standby), which supports only
-//! such a service. Exits 0 when the cluster terminated it, 1 when
+//! `silent` answers no client. `no-service-messages` sends none. Exits 0 when the cluster terminated it, 1 when
 //! it stopped for anything else, 2 when it could not start.
 
 use rusteron_cluster::{ContainerContext, Exit, ServiceContainer};

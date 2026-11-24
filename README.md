@@ -70,8 +70,6 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 | [rusteron-archive-server](rusteron-archive-server/README.md) | Aeron Archive's server (`aeron_archive`): what a cluster asks of its archive |
 | [rusteron-archive-core](rusteron-archive-core/README.md) | The archive server's sans-IO core: the catalog, the segment files, the control protocol |
 | [rusteron-archive-codecs](rusteron-archive-codecs/README.md) | Aeron Archive 1.54.2's SBE codecs |
-| [rusteron-cluster-standby](rusteron-cluster-standby/README.md) | A warm standby: a cluster backup that also runs the service, takes snapshots the members load, and seeds a new cluster after a disaster |
-| [rusteron-cluster-tools](rusteron-cluster-tools/README.md) | Run and check a cluster of separate processes: a node's media driver, a log comparison, status and snapshots, and the scripts |
 | [rusteron-cluster-sim](rusteron-cluster-sim/README.md) | A deterministic simulator of a cluster of Rust consensus modules (not published) |
 | [rusteron-cluster-interop](rusteron-cluster-interop/README.md) | Tests beside Java Aeron Cluster 1.54.2, and the scenario scripts (not published) |
 
@@ -89,8 +87,6 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 - Jepsen with Elle, on three members: Rust members are valid under random partitions, kills and
   pauses, and in two staged election scenarios where Java 1.54.2 members cut committed entries or
   stop serving ([rusteron-cluster-interop/jepsen](rusteron-cluster-interop/jepsen/README.md)).
-- The standby, with no JVM: its state and log against the members', a member restarted from its
-  snapshot, and a new cluster seeded from it.
 
 **Out of scope:** dynamic membership, consensus module extensions, authenticators other than the
 default, IPC ingress, recording-log validation, and the archive requests a cluster does not make.
@@ -101,10 +97,8 @@ and the archive starts over a recording with no frame after a page-aligned start
 
 **Design notes:** the [service container](rusteron-cluster/docs/design.md), the
 [consensus module](rusteron-cluster/docs/consensus.md), the [client](rusteron-cluster/docs/client.md),
-the [backup](rusteron-cluster/docs/backup.md), the [archive server](rusteron-archive-server/docs/design.md)
-and the [standby](rusteron-cluster-standby/docs/design.md). To run a cluster of separate processes,
-see [rusteron-cluster-tools](rusteron-cluster-tools/README.md); the scenarios are in
-`rusteron-cluster-interop/scripts`.
+the [backup](rusteron-cluster/docs/backup.md) and the [archive server](rusteron-archive-server/docs/design.md).
+The scenarios are in `rusteron-cluster-interop/scripts`.
 
 ## Getting started
 

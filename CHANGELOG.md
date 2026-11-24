@@ -16,9 +16,6 @@ wire- and on-disk-compatible with Aeron 1.54.2.
   - their SBE codecs (`rusteron-cluster-codecs`).
 - Added Aeron Archive's server for what a cluster asks of its archive (`rusteron-archive-server`),
   its sans-IO core (`rusteron-archive-core`) and its SBE codecs (`rusteron-archive-codecs`).
-- Added a warm standby (`rusteron-cluster-standby`). It runs the service on the log a cluster
-  backup records, takes standby snapshots the members load, and seeds a new cluster after a disaster.
-- Added tools to run and check a cluster of separate processes (`rusteron-cluster-tools`).
 - Added a deterministic simulator (`rusteron-cluster-sim`) and tests beside Java Aeron Cluster
   1.54.2 (`rusteron-cluster-interop`). Neither is published.
 - Valgrind runs only on the crates that call Aeron C.

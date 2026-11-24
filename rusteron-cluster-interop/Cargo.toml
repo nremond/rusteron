@@ -10,7 +10,6 @@ description = "Runs rusteron-cluster against Java Aeron Cluster 1.54.2: the Rust
 static = ["rusteron-cluster/static", "rusteron-archive/static"]
 
 [dependencies]
-crc32c = "0.6"
 hdrhistogram = { workspace = true }
 rusteron-archive = { path = "../rusteron-archive" }
 rusteron-cluster = { path = "../rusteron-cluster" }
@@ -34,7 +33,3 @@ path = "src/bin/bench_client.rs"
 [[bin]]
 name = "client_lines"
 path = "src/bin/client_lines.rs"
-
-[[bin]]
-name = "archive_streams"
-path = "src/bin/archive_streams.rs"

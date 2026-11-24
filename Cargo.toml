@@ -14,8 +14,6 @@ members = [
     "rusteron-cluster-sim",
     "rusteron-cluster",
     "rusteron-cluster-interop",
-    "rusteron-cluster-standby",
-    "rusteron-cluster-tools",
 ]
 exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
 resolver = "2"
