@@ -28,14 +28,19 @@ export RUSTFLAGS="-C target-cpu=x86-64"
 
 echo "=== Phase 1: build test binaries ==="
 # --no-run builds but does not execute; --message-format=json lets us extract
-# the exact paths of the compiled test executables via jq. The cluster's
-# codecs and sans-IO cores are pure Rust, calling no Aeron C: Valgrind has
-# nothing to check there, and the simulator's seeds alone outlast the job.
+# the exact paths of the compiled test executables via jq. The archive's and
+# the cluster's codecs and sans-IO state machines are pure Rust, calling no
+# Aeron C: Valgrind has nothing to check in their integration tests
+# (rusteron-cluster's, and rusteron-archive's catalog to codecs_golden), nor in
+# the system tests, whose simulator seeds alone outlast the job.
 BINARIES=$(
   COPY_BINDINGS=true \
   "$CARGO" test --workspace --no-run --message-format=json \
   | jq -r 'select(.reason == "compiler-artifact" and .profile.test == true and .executable != null)
-      | select(.manifest_path | test("/rusteron-(archive-codecs|cluster-codecs|cluster-core|archive-core|consensus-core|cluster-sim)/Cargo.toml$") | not)
+      | select(.manifest_path | test("/rusteron-system-tests/Cargo.toml$") | not)
+      | select(((.manifest_path | test("/rusteron-cluster/Cargo.toml$")) and (.target.kind | index("test"))) | not)
+      | select(((.manifest_path | test("/rusteron-archive/Cargo.toml$")) and (.target.kind | index("test"))
+          and (.target.name | test("^(catalog|conductor|oracle|replay|session|verify|codecs_golden)$"))) | not)
       | .executable'
 )
 
