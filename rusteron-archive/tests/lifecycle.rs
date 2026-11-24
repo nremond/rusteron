@@ -1,6 +1,6 @@
 //! Native lifetime tests. These also run under Valgrind without a Java archive.
 use rusteron_archive::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 

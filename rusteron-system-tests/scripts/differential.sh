@@ -208,7 +208,7 @@ cluster_tool() { # node command
 [[ $ARCHIVE != rust || -x "$ARCHIVE_BIN" ]] || fail "build the archive: cargo build -p rusteron-archive --features static,server"
 [[ -z "$CM_NODES" || -x "$CM_BIN" ]] || fail "build the consensus module: cargo build -p rusteron-cluster --features static --bin consensus_module"
 [[ $CLIENT != rust || -x "$ECHO_CLIENT" ]] || fail "build the client: cargo build -p rusteron-system-tests --features static"
-[[ -x "$DRIVER" && -x "$RUST_NODE" ]] || fail "build first: cargo build -p rusteron-media-driver --bin media_driver --features static && cargo build -p rusteron-system-tests --features static"
+[[ -x "$DRIVER" && -x "$RUST_NODE" ]] || fail "build first: cargo build -p rusteron-driver --bin media_driver --features static && cargo build -p rusteron-system-tests --features static"
 
 driver_pid=()
 for ((n = 0; n < NODES; n++)); do

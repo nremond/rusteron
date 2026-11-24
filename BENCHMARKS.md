@@ -668,7 +668,7 @@ depend on it.
    ```toml
    [dependencies]
    rusteron-client = { version = "0.3", features = ["static"] }
-   rusteron-media-driver = { version = "0.3", features = ["static"] }
+   rusteron-driver = { version = "0.3", features = ["static"] }
 
    [profile.release]
    lto = "fat"

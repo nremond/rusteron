@@ -93,7 +93,7 @@ build() {
     # one driver for every run, so the arms differ only in the client
     log "build media_driver"
     (cd "$lab/rusteron" && RUSTFLAGS="$native" CARGO_TARGET_DIR="$lab/target-driver" \
-        cargo build --release -p rusteron-media-driver --features static --bin media_driver) >"$res/build-driver.log" 2>&1
+        cargo build --release -p rusteron-driver --features static --bin media_driver) >"$res/build-driver.log" 2>&1
     cp "$lab/target-driver/release/media_driver" "$bin/"
     if [[ ${LAB_EXTRAS:-} == *samples* ]]; then build_samples; fi
     # the builds leave a Gradle daemon behind, a JVM that would sit beside every benchmark

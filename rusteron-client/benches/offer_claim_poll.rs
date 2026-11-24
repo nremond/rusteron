@@ -14,7 +14,7 @@ use rusteron_client::bindings::{
     aeron_publication_try_claim,
 };
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::ffi::CStr;
 use std::hint::black_box;
 use std::time::{Duration, Instant};

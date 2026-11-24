@@ -76,7 +76,7 @@ None of the backup's own: it records the log at the pace of the member archive's
 ```bash
 cargo test -p rusteron-cluster --test backup
 cargo run -p rusteron-system-tests --release --bin cluster_sim -- --seeds 0..1000 --backup
-cargo build --release -p rusteron-media-driver --bin media_driver --features static
+cargo build --release -p rusteron-driver --bin media_driver --features static
 cargo build --release -p rusteron-archive --features static,server
 cargo build --release -p rusteron-cluster --features static --bin cluster_backup --bin consensus_module
 SCENARIO=failover rusteron-system-tests/scripts/backup.sh

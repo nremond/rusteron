@@ -71,7 +71,7 @@ A publication with a control endpoint and `control-mode=dynamic` sends to every 
 
 ```rust
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

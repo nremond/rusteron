@@ -44,7 +44,7 @@ It is developed under the GSR GitHub organisation. We welcome contributions, fee
 | --- | --- |
 | [rusteron-client](rusteron-client/README.md) | Connect, publish and subscribe over IPC or UDP |
 | [rusteron-archive](rusteron-archive/README.md) | The transport client plus recording, replay, replication and persistent subscriptions |
-| [rusteron-media-driver](rusteron-media-driver/README.md) | Run an embedded or standalone C media driver, and extend it in Rust |
+| [rusteron-driver](rusteron-driver/README.md) | Run an embedded or standalone C media driver, and extend it in Rust |
 | [rusteron-code-gen](rusteron-code-gen/README.md) | Generate bindings and wrappers; an internal build dependency |
 
 `rusteron-archive` includes the transport APIs, so applications using it do not
@@ -123,12 +123,12 @@ Linux also needs the native link dependencies listed in [BUILD.md](BUILD.md).
 Replace `rusteron-client` with another crate as needed.
 
 This example launches an embedded Media Driver, then publishes and receives one
-message. The embedded driver comes from `rusteron-media-driver`. In production, run
+message. The embedded driver comes from `rusteron-driver`. In production, run
 the driver as its own process and connect with `Aeron::connect_dir(dir)`.
 
 ```rust
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::time::Duration;
 
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -228,7 +228,7 @@ panics and continue. Message redelivery depends on the callback type. See
 | [Zero-copy claim](rusteron-client/examples/zero_copy_claim.rs) | Claim, write and commit a message |
 | [Record and replay](rusteron-archive/examples/record_and_replay.rs) | Record a stream and replay its history |
 | [Persistent subscription](rusteron-archive/examples/persistent_subscription.rs) | Replay history and join live traffic |
-| [Docker samples](rusteron-docker-samples/README.md) | Run a driver, publisher and subscriber |
+| [Docker samples](rusteron-samples/README.md) | Run a driver, publisher and subscriber |
 
 ## Documentation and guides
 

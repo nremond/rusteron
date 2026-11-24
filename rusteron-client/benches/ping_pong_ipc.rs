@@ -6,7 +6,7 @@ mod ping_pong_common;
 use criterion::Criterion;
 use ping_pong_common::{Channels, run_ping, run_pong};
 use rusteron_client::AERON_IPC_STREAM;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 

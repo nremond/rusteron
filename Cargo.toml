@@ -1,14 +1,14 @@
 [workspace]
 members = [
     "rusteron-code-gen",
-    "rusteron-media-driver",
-    "rusteron-media-driver/links-test",
+    "rusteron-driver",
+    "rusteron-driver/links-test",
     "rusteron-client",
     "rusteron-archive",
     "rusteron-cluster",
     "rusteron-system-tests",
 ]
-exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
+exclude = ["rusteron-samples/rusteron-dummy-example"]
 resolver = "2"
 
 [workspace.package]

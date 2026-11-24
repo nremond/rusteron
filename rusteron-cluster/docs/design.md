@@ -197,11 +197,11 @@ Building Aeron C needs CMake, and a JDK older than 27 for Aeron's Gradle (25 wor
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 BUILD_JAVA_HOME=$JAVA_HOME
 cargo test -p rusteron-cluster -p rusteron-cluster -p rusteron-cluster
-cargo build -p rusteron-media-driver --bin media_driver --features static
+cargo build -p rusteron-driver --bin media_driver --features static
 cargo build -p rusteron-system-tests --features static
 SCENARIO=failover rusteron-system-tests/scripts/differential.sh 3 1000
 rusteron-system-tests/scripts/repeat.sh 20
-cargo build --release -p rusteron-media-driver --bin media_driver --features static
+cargo build --release -p rusteron-driver --bin media_driver --features static
 cargo build --release -p rusteron-system-tests --features static
 rusteron-system-tests/scripts/bench.sh "1000 10000 100000 200000"   # on an otherwise idle machine
 ```

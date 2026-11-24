@@ -54,13 +54,13 @@ fd-lock               = { workspace = true }
 hdrhistogram          = { workspace = true }
 proptest              = { workspace = true }
 rusteron-code-gen     = { workspace = true }
-rusteron-media-driver = { path = "../rusteron-media-driver" }
+rusteron-driver = { path = "../rusteron-driver" }
 serial_test           = { workspace = true }
 
 [features]
 # using static as different modules have different versions of aeron which don't seem to play nicely
 default        = ["build-from-source"]
-static         = ["build-from-source", "rusteron-media-driver/static"]  # Statically links the Aeron C code
+static         = ["build-from-source", "rusteron-driver/static"]  # Statically links the Aeron C code
 backtrace      = ["dep:regex"]   # Logs the backtrace on each AeronCError
 strict-lifecycle = ["rusteron-code-gen/strict-lifecycle"]   # Panic on Drop-time lifecycle leaks in tests
 extra-logging  = []   # Logs when resources are created and destroyed

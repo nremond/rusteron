@@ -152,7 +152,7 @@ The figure is the longest wait between two answers after each snapshot was asked
 ## 7. Run it
 
 ```bash
-cargo build -p rusteron-media-driver --bin media_driver --features static
+cargo build -p rusteron-driver --bin media_driver --features static
 cargo build -p rusteron-system-tests --features static
 cargo build -p rusteron-cluster --features static --bin consensus_module
 SCENARIO=failover CM_NODES="0 1 2" rusteron-system-tests/scripts/differential.sh 3

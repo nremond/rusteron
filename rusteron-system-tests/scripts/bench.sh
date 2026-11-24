@@ -117,7 +117,7 @@ run() { # round responder rate
   rm -rf "$work"
 }
 
-[[ -x "$DRIVER" && -x "$RUST_NODE" ]] || fail "build first: cargo build --release -p rusteron-media-driver --bin media_driver --features static && cargo build --release -p rusteron-system-tests --features static"
+[[ -x "$DRIVER" && -x "$RUST_NODE" ]] || fail "build first: cargo build --release -p rusteron-driver --bin media_driver --features static && cargo build --release -p rusteron-system-tests --features static"
 command -v taskset >/dev/null || fail "taskset not found"
 
 {

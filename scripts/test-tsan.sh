@@ -16,12 +16,12 @@ export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target/tsan}"
 export AERON_DIR="${AERON_DIR:-${TMPDIR:-/tmp}/rusteron-tsan}"
 target="$(rustc -vV | sed -n 's/^host: //p')"
 
-cargo test -Zbuild-std --target "$target" -p rusteron-media-driver --features static \
+cargo test -Zbuild-std --target "$target" -p rusteron-driver --features static \
     --lib extensions -- --test-threads=1 --skip panicking_extension_aborts
-cargo test -Zbuild-std --target "$target" -p rusteron-media-driver --features static \
+cargo test -Zbuild-std --target "$target" -p rusteron-driver --features static \
     --test driver_extensions --test thread_safety -- --test-threads=1
-cargo test -Zbuild-std --target "$target" -p rusteron-media-driver-links-test \
-    --features rusteron-media-driver/static --tests -- --test-threads=1
+cargo test -Zbuild-std --target "$target" -p rusteron-driver-links-test \
+    --features rusteron-driver/static --tests -- --test-threads=1
 # The skipped test deliberately leaves a conductor alive after a self-join fails.
 # Its ordinary run checks the leak fallback; TSan correctly reports a thread leak.
 cargo test -Zbuild-std --target "$target" -p rusteron-client --features static \
@@ -36,7 +36,7 @@ cargo test -Zbuild-std --target "$target" -p rusteron-archive --features static 
 negative_log="$(mktemp)"
 trap 'rm -f "$negative_log"' EXIT
 for control in native_race_is_detected rust_callback_race_is_detected; do
-    if cargo test -Zbuild-std --target "$target" -p rusteron-media-driver --features static \
+    if cargo test -Zbuild-std --target "$target" -p rusteron-driver --features static \
         --test tsan_detection -- --ignored --exact "$control" > "$negative_log" 2>&1; then
         cat "$negative_log"
         echo "TSan did not reject $control" >&2

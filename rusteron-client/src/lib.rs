@@ -272,7 +272,7 @@ mod assembler_tests {
     //! Reassembly and session-buffer cleanup for every assembler, against an embedded driver
 
     use super::*;
-    use rusteron_media_driver::testing::EmbeddedDriver;
+    use rusteron_driver::testing::EmbeddedDriver;
     use serial_test::serial;
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -328,9 +328,7 @@ mod assembler_tests {
     fn connect_ipc(stream_id: i32) -> Result<Ipc, Box<dyn std::error::Error>> {
         // RAII stops the driver on assertion failure too; handles drop before it.
         let driver = EmbeddedDriver::launch_with(|ctx| {
-            ctx.set_threading_mode(
-                rusteron_media_driver::bindings::aeron_threading_mode_t::AERON_THREADING_MODE_SHARED,
-            )?;
+            ctx.set_threading_mode(rusteron_driver::bindings::aeron_threading_mode_t::AERON_THREADING_MODE_SHARED)?;
             ctx.set_ipc_term_buffer_length(64 * 1024)?;
             if std::env::var_os("RUSTERON_VALGRIND").is_some() {
                 ctx.set_client_liveness_timeout_ns(180_000_000_000)?;
@@ -646,7 +644,7 @@ mod assembler_tests {
 #[cfg(test)]
 mod udp_timestamp_tests {
     use super::*;
-    use rusteron_media_driver::testing::EmbeddedDriver;
+    use rusteron_driver::testing::EmbeddedDriver;
     use serial_test::serial;
     use std::net::UdpSocket;
     use std::time::{Duration, Instant};
@@ -658,9 +656,7 @@ mod udp_timestamp_tests {
             10
         });
         let driver = EmbeddedDriver::launch_with(|ctx| {
-            ctx.set_threading_mode(
-                rusteron_media_driver::bindings::aeron_threading_mode_t::AERON_THREADING_MODE_SHARED,
-            )?;
+            ctx.set_threading_mode(rusteron_driver::bindings::aeron_threading_mode_t::AERON_THREADING_MODE_SHARED)?;
             ctx.set_term_buffer_length(64 * 1024)?;
             ctx.set_client_liveness_timeout_ns(180_000_000_000)?;
             ctx.set_image_liveness_timeout_ns(180_000_000_000)?;
@@ -918,7 +914,7 @@ mod tests {
     use crate::test_alloc::current_allocs;
     use hdrhistogram::Histogram;
     use log::{error, info};
-    use rusteron_media_driver::AeronDriverContext;
+    use rusteron_driver::AeronDriverContext;
     use serial_test::serial;
     use std::error;
     use std::error::Error;
@@ -1071,8 +1067,7 @@ mod tests {
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1212,14 +1207,13 @@ mod tests {
     fn async_publication_invalid_interface_poll_then_drop() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1319,8 +1313,7 @@ mod tests {
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1485,8 +1478,7 @@ mod tests {
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1601,8 +1593,7 @@ mod tests {
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1743,8 +1734,7 @@ mod tests {
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1843,8 +1833,7 @@ mod tests {
         media_driver_ctx.set_dir_delete_on_start(true)?;
         // SAFETY: this expression consumes the text before any context mutation
         media_driver_ctx.set_dir(&format!("{}alloc-guard", unsafe { media_driver_ctx.get_dir() }).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -1916,14 +1905,13 @@ mod tests {
     fn async_pub_sub_invalid_endpoint_create_drop_stress() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2011,14 +1999,13 @@ mod tests {
     fn async_subscription_invalid_interface_poll_then_drop() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2050,14 +2037,13 @@ mod tests {
     fn blocking_add_subscription_invalid_interface_timeout() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2089,14 +2075,13 @@ mod tests {
     fn async_publication_invalid_bind_poll_then_drop() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2125,7 +2110,7 @@ mod tests {
     #[serial]
     pub fn simple_large_send() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
@@ -2140,8 +2125,7 @@ mod tests {
         media_driver_ctx.set_image_liveness_timeout_ns(liveness_ns)?;
         media_driver_ctx.set_publication_unblock_timeout_ns(unblock_ns)?;
         media_driver_ctx.set_driver_timeout_ms(driver_timeout_ms)?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2358,7 +2342,7 @@ mod tests {
     #[serial]
     pub fn try_claim() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
@@ -2373,8 +2357,7 @@ mod tests {
         media_driver_ctx.set_image_liveness_timeout_ns(liveness_ns)?;
         media_driver_ctx.set_publication_unblock_timeout_ns(unblock_ns)?;
         media_driver_ctx.set_driver_timeout_ms(driver_timeout_ms)?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2517,14 +2500,13 @@ mod tests {
     #[serial]
     pub fn counters() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2664,7 +2646,7 @@ mod tests {
         };
         let poll_timeout = Duration::from_millis(driver_timeout_ms as u64);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
@@ -2674,8 +2656,7 @@ mod tests {
         media_driver_ctx.set_image_liveness_timeout_ns(liveness_timeout_ns)?;
         media_driver_ctx.set_publication_unblock_timeout_ns(liveness_timeout_ns + 5_000_000_000)?;
         media_driver_ctx.set_driver_timeout_ms(driver_timeout_ms)?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2750,7 +2731,7 @@ mod tests {
     pub fn multi_subscription_test() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
@@ -2760,8 +2741,7 @@ mod tests {
         media_driver_ctx.set_image_liveness_timeout_ns(60_000_000_000)?;
         media_driver_ctx.set_publication_unblock_timeout_ns(65_000_000_000)?;
         media_driver_ctx.set_driver_timeout_ms(60_000)?;
-        let (_stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (_stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2839,14 +2819,13 @@ mod tests {
     pub fn should_be_able_to_drop_after_close_manually_being_closed() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (_stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (_stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2888,14 +2867,13 @@ mod tests {
         // Dropping a ManagedCResource must free the C resource without errors.
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (_stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (_stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -2925,14 +2903,13 @@ mod tests {
     pub fn empty_message_test() -> Result<(), Box<dyn error::Error>> {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx
             // SAFETY: the text is used at once, before any setter can change it
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())?;
-        let (_stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (_stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let ctx = AeronContext::new()?;
         // SAFETY: this expression consumes the text before any context mutation
@@ -3338,11 +3315,11 @@ mod tests {
         (
             AeronDriverContext,
             Arc<AtomicBool>,
-            JoinHandle<Result<(), rusteron_media_driver::AeronCError>>,
+            JoinHandle<Result<(), rusteron_driver::AeronCError>>,
         ),
         Box<dyn Error>,
     > {
-        let media_driver_ctx = rusteron_media_driver::AeronDriverContext::new()?;
+        let media_driver_ctx = rusteron_driver::AeronDriverContext::new()?;
         media_driver_ctx.set_dir_delete_on_shutdown(true)?;
         media_driver_ctx.set_dir_delete_on_start(true)?;
         media_driver_ctx.set_dir(
@@ -3355,8 +3332,7 @@ mod tests {
             )
             .into_c_string(),
         )?;
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
         Ok((media_driver_ctx, stop, driver_handle))
     }
 
@@ -3594,7 +3570,7 @@ mod tests {
     mod spin_poll_tests {
         use super::*;
         use crate::test_alloc::assert_no_heap_allocation;
-        use rusteron_media_driver::AeronDriverContext;
+        use rusteron_driver::AeronDriverContext;
         use serial_test::serial;
 
         /// Tests the `poll_fn` closure-poll on `AeronSubscription`.
@@ -3614,8 +3590,7 @@ mod tests {
                 .set_dir(
                     &format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string(),
                 )?;
-            let (stop, driver_handle) =
-                rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+            let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
             let ctx = AeronContext::new()?;
             // SAFETY: this expression consumes the text before any context mutation
@@ -3758,7 +3733,7 @@ mod tests {
 
     // Channels from Aeron's SessionSpecificPublicationTest and ResponseChannelsTest.
     fn session_test_channels() -> [std::ffi::CString; 2] {
-        let port = rusteron_media_driver::testing::find_unused_udp_port(21300).expect("no UDP port available");
+        let port = rusteron_driver::testing::find_unused_udp_port(21300).expect("no UDP port available");
         [
             c"aeron:ipc?term-length=64k".to_owned(),
             format!("aeron:udp?endpoint=127.0.0.1:{port}|term-length=64k").into_c_string(),
@@ -3860,7 +3835,7 @@ mod tests {
         let channels = session_test_channels();
         let request_channel = &channels[usize::from(udp)];
         let response_channel = if udp {
-            let port = rusteron_media_driver::testing::find_unused_udp_port(21400).ok_or("no UDP port available")?;
+            let port = rusteron_driver::testing::find_unused_udp_port(21400).ok_or("no UDP port available")?;
             format!("aeron:udp?control-mode=response|control=127.0.0.1:{port}|session-id=71|term-length=64k")
                 .into_c_string()
         } else {
@@ -3941,22 +3916,22 @@ mod tests {
     /// Helper: set up an embedded media driver + Aeron client.
     fn setup_aeron_for_uaf_test() -> (
         Aeron,
-        rusteron_media_driver::testing::EmbeddedDriver,
+        rusteron_driver::testing::EmbeddedDriver,
         SharedHandler<TestErrorCount>,
     ) {
         setup_aeron_for_uaf_test_with(|_| Ok(()))
     }
 
     fn setup_aeron_for_uaf_test_with(
-        configure: impl FnOnce(&AeronDriverContext) -> Result<(), rusteron_media_driver::AeronCError>,
+        configure: impl FnOnce(&AeronDriverContext) -> Result<(), rusteron_driver::AeronCError>,
     ) -> (
         Aeron,
-        rusteron_media_driver::testing::EmbeddedDriver,
+        rusteron_driver::testing::EmbeddedDriver,
         SharedHandler<TestErrorCount>,
     ) {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
 
-        let driver = rusteron_media_driver::testing::EmbeddedDriver::launch_with(configure).unwrap();
+        let driver = rusteron_driver::testing::EmbeddedDriver::launch_with(configure).unwrap();
 
         let ctx = AeronContext::new().unwrap();
         ctx.set_dir(&driver.dir().into_c_string()).unwrap();
@@ -3970,7 +3945,7 @@ mod tests {
     }
 
     fn teardown_aeron_after_uaf_test(
-        driver: rusteron_media_driver::testing::EmbeddedDriver,
+        driver: rusteron_driver::testing::EmbeddedDriver,
         error_handler: SharedHandler<TestErrorCount>,
     ) {
         drop(driver); // stops + joins on Drop
@@ -4490,8 +4465,7 @@ mod tests {
             // SAFETY: this expression consumes the text before any context mutation
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())
             .unwrap();
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let errors = Arc::new(AtomicUsize::new(0));
         let image_drops = Arc::new(AtomicUsize::new(0));
@@ -5285,8 +5259,8 @@ mod tests {
             .poll_blocking(Duration::from_secs(5))
             .unwrap();
 
-        let port_a = rusteron_media_driver::testing::find_unused_udp_port(20300).expect("no free port");
-        let port_b = rusteron_media_driver::testing::find_unused_udp_port(port_a + 1).expect("no free port");
+        let port_a = rusteron_driver::testing::find_unused_udp_port(20300).expect("no free port");
+        let port_b = rusteron_driver::testing::find_unused_udp_port(port_a + 1).expect("no free port");
         let dest_a = udp_endpoint_channel(port_a);
         let dest_b = udp_endpoint_channel(port_b);
 
@@ -5406,9 +5380,9 @@ mod tests {
             .poll_blocking(Duration::from_secs(5))
             .unwrap();
 
-        let port_a = rusteron_media_driver::testing::find_unused_udp_port(20320).expect("no free port");
-        let port_b = rusteron_media_driver::testing::find_unused_udp_port(port_a + 1).expect("no free port");
-        let port_c = rusteron_media_driver::testing::find_unused_udp_port(port_b + 1).expect("no free port");
+        let port_a = rusteron_driver::testing::find_unused_udp_port(20320).expect("no free port");
+        let port_b = rusteron_driver::testing::find_unused_udp_port(port_a + 1).expect("no free port");
+        let port_c = rusteron_driver::testing::find_unused_udp_port(port_b + 1).expect("no free port");
         let dest_a = udp_endpoint_channel(port_a); // removed via remove_destination(uri)
         let dest_b = udp_endpoint_channel(port_b); // removed via remove_destination_by_id
         let dest_c = udp_endpoint_channel(port_c); // control: never removed
@@ -5537,8 +5511,8 @@ mod tests {
             .poll_blocking(Duration::from_secs(5))
             .unwrap();
 
-        let port_a = rusteron_media_driver::testing::find_unused_udp_port(20340).expect("no free port");
-        let port_b = rusteron_media_driver::testing::find_unused_udp_port(port_a + 1).expect("no free port");
+        let port_a = rusteron_driver::testing::find_unused_udp_port(20340).expect("no free port");
+        let port_b = rusteron_driver::testing::find_unused_udp_port(port_a + 1).expect("no free port");
         let dest_a = udp_endpoint_channel(port_a); // removed via remove_destination(uri)
         let dest_b = udp_endpoint_channel(port_b); // removed via remove_destination_by_id
 
@@ -5690,7 +5664,7 @@ mod tests {
         unsafe extern "C" {
             fn aeron_image_refcnt_acquire(image: *mut aeron_image_t) -> i64;
         }
-        let driver = rusteron_media_driver::testing::EmbeddedDriver::launch_with(|ctx| {
+        let driver = rusteron_driver::testing::EmbeddedDriver::launch_with(|ctx| {
             ctx.set_publication_linger_timeout_ns(Duration::from_millis(50).as_nanos() as u64)
                 .map(|_| ())
         })
@@ -5747,7 +5721,7 @@ mod tests {
         unsafe extern "C" {
             fn aeron_image_refcnt_acquire(image: *mut aeron_image_t) -> i64;
         }
-        let driver = rusteron_media_driver::testing::EmbeddedDriver::launch_with(|ctx| {
+        let driver = rusteron_driver::testing::EmbeddedDriver::launch_with(|ctx| {
             ctx.set_publication_linger_timeout_ns(Duration::from_millis(50).as_nanos() as u64)
                 .map(|_| ())
         })
@@ -5979,8 +5953,7 @@ mod tests {
             // SAFETY: this expression consumes the text before any context mutation
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())
             .unwrap();
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let aeron = {
             let ctx = AeronContext::new().unwrap();
@@ -6054,8 +6027,7 @@ mod tests {
             // SAFETY: this expression consumes the text before any context mutation
             .set_dir(&format!("{}{}", unsafe { media_driver_ctx.get_dir() }, Aeron::epoch_clock()).into_c_string())
             .unwrap();
-        let (stop, driver_handle) =
-            rusteron_media_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
+        let (stop, driver_handle) = rusteron_driver::AeronDriver::launch_embedded(media_driver_ctx.clone(), false);
 
         let errors = Arc::new(AtomicUsize::new(0));
         let ctx = AeronContext::new().unwrap();
@@ -6148,7 +6120,7 @@ mod tests {
     #[test]
     #[serial]
     fn handler_dependency_tracking() {
-        let driver = rusteron_media_driver::testing::EmbeddedDriver::launch().unwrap();
+        let driver = rusteron_driver::testing::EmbeddedDriver::launch().unwrap();
         let context = AeronContext::new().unwrap();
         context.set_dir(&driver.dir().into_c_string()).unwrap();
         let handler = SharedHandler::new_shared(|_: i32, _: &str| {});
@@ -6272,7 +6244,7 @@ mod tests {
     #[serial]
     fn invoker_mode_on_available_image_fires_safely_around_close() {
         rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
-        let driver = rusteron_media_driver::testing::EmbeddedDriver::launch().unwrap();
+        let driver = rusteron_driver::testing::EmbeddedDriver::launch().unwrap();
 
         let ctx = AeronContext::new().unwrap();
         ctx.set_dir(&driver.dir().into_c_string()).unwrap();
@@ -6381,7 +6353,7 @@ mod tests {
     #[test]
     #[serial]
     fn invoker_mode_blocking_adds_drive_the_conductor() -> Result<(), Box<dyn std::error::Error>> {
-        let driver = rusteron_media_driver::testing::EmbeddedDriver::launch()?;
+        let driver = rusteron_driver::testing::EmbeddedDriver::launch()?;
         let ctx = AeronContext::new()?;
         ctx.set_dir(&driver.dir().into_c_string())?;
         ctx.set_use_conductor_agent_invoker(true)?;
@@ -6393,7 +6365,7 @@ mod tests {
         let subscription = aeron
             .async_add_subscription(&manual_control_mode_channel(), 2102, Handlers::NONE, Handlers::NONE)?
             .poll_blocking(timeout)?;
-        let port = rusteron_media_driver::testing::find_unused_udp_port(20400).ok_or("no free port")?;
+        let port = rusteron_driver::testing::find_unused_udp_port(20400).ok_or("no free port")?;
         subscription.add_destination(&udp_endpoint_channel(port), timeout)?;
 
         drop(subscription);

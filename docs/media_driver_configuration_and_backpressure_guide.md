@@ -20,11 +20,11 @@ For tuning guides, system properties, and thread models:
 
 ### 1. Launching an embedded C Media Driver
 
-Use `rusteron-media-driver` to run the C Media Driver in your Rust process:
+Use `rusteron-driver` to run the C Media Driver in your Rust process:
 
 ```rust,no_run
-use rusteron_media_driver::bindings::aeron_threading_mode_t;
-use rusteron_media_driver::{AeronDriver, AeronDriverContext};
+use rusteron_driver::bindings::aeron_threading_mode_t;
+use rusteron_driver::{AeronDriver, AeronDriverContext};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ctx = AeronDriverContext::new()?;
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-For tests, `rusteron_media_driver::testing::EmbeddedDriver::launch_with(|ctx| { ctx.set_threading_mode(..)?; Ok(()) })` also picks a unique directory.
+For tests, `rusteron_driver::testing::EmbeddedDriver::launch_with(|ctx| { ctx.set_threading_mode(..)?; Ok(()) })` also picks a unique directory.
 
 ### 2. Handling publication back-pressure (`BACK_PRESSURED`)
 

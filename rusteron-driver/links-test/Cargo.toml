@@ -1,0 +1,15 @@
+[package]
+name = "rusteron-driver-links-test"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Checks that rusteron-driver exports the Aeron header paths a custom UDP transport compiles against"
+
+[package.metadata.release]
+release = false
+
+[dependencies]
+rusteron-driver = { path = ".." }
+
+[build-dependencies]
+cc = "1"

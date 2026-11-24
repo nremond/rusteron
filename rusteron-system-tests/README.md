@@ -1,10 +1,10 @@
 # rusteron-system-tests
 
-Runs `rusteron-cluster` against Java Aeron Cluster 1.54.2: a Java consensus module and archive per node, the Rust test service (`src/lib.rs`) as service 0 in `rust_service_node`, its Java twin (`java/OracleService.java`, the same logic) as service 1 of the same log, each node on its own C media driver from `rusteron-media-driver`, and a Java client. Not published.
+Runs `rusteron-cluster` against Java Aeron Cluster 1.54.2: a Java consensus module and archive per node, the Rust test service (`src/lib.rs`) as service 0 in `rust_service_node`, its Java twin (`java/OracleService.java`, the same logic) as service 1 of the same log, each node on its own C media driver from `rusteron-driver`, and a Java client. Not published.
 
 ```bash
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-23.jdk/Contents/Home BUILD_JAVA_HOME=$JAVA_HOME
-cargo build -p rusteron-media-driver --bin media_driver --features static
+cargo build -p rusteron-driver --bin media_driver --features static
 cargo build -p rusteron-system-tests --features static
 SCENARIO=basic scripts/differential.sh 1 1000
 SCENARIO=failover scripts/differential.sh 3 1000

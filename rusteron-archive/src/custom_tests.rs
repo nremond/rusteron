@@ -4,7 +4,7 @@ use super::*;
 #[test]
 #[cfg_attr(feature = "backtrace", ignore = "backtrace allocates on each AeronCError")]
 fn source_identity_errors_do_not_allocate_on_the_rust_heap() -> Result<(), Box<dyn std::error::Error>> {
-    let driver = rusteron_media_driver::testing::EmbeddedDriver::launch()?;
+    let driver = rusteron_driver::testing::EmbeddedDriver::launch()?;
     let client = Aeron::connect_dir(driver.dir())?;
     let reader = client.counters_reader();
     let mut destination = [0xAA; 16];
@@ -191,7 +191,7 @@ fn credentials_supplier_without_callbacks_returns_none() -> Result<(), AeronCErr
 
 #[test]
 fn persistent_subscription_copy_does_not_inherit_native_ownership() -> Result<(), Box<dyn std::error::Error>> {
-    use rusteron_media_driver::testing::EmbeddedDriver;
+    use rusteron_driver::testing::EmbeddedDriver;
 
     let driver = EmbeddedDriver::launch()?;
     let source = AeronArchiveContext::new()?;

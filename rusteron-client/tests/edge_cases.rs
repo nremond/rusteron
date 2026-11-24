@@ -2,7 +2,7 @@
 //! retained images, driver loss and teardown from conductor callbacks
 use rusteron_client::bindings::aeron_controlled_fragment_handler_action_t as Action;
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};

@@ -1,6 +1,6 @@
 //! Native descriptor poller contracts; no Java Archive process is needed.
 use super::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::rc::Rc;
 use std::time::Duration;
 

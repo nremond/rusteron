@@ -1,5 +1,5 @@
 // Shared build-script implementation for rusteron-client / rusteron-archive /
-// rusteron-media-driver.
+// rusteron-driver.
 //
 // This file is `include!`d by each crate's build.rs (NOT compiled as part of
 // rusteron-code-gen), so `cfg!(feature = ...)` and `env!("CARGO_MANIFEST_DIR")` resolve
@@ -116,7 +116,7 @@ fn emit_link_libs(link_type: &LinkType, config: &RusteronBuildConfig) {
 
 pub fn rusteron_build_main(config: &RusteronBuildConfig) {
     // C built outside this crate, such as a custom UDP transport, must compile against the
-    // headers of the Aeron built here. rusteron-media-driver's `links = "aeron_driver"` key
+    // headers of the Aeron built here. rusteron-driver's `links = "aeron_driver"` key
     // hands these to its direct dependents' build scripts as DEP_AERON_DRIVER_INCLUDE,
     // DEP_AERON_DRIVER_CLIENT_INCLUDE and DEP_AERON_DRIVER_AERON_ROOT; crates without the key
     // ignore them.
@@ -797,9 +797,15 @@ fn download_precompiled_binaries(
     let result = (|| -> Result<(), Box<dyn std::error::Error>> {
         archive.unpack(&staging_dir)?;
         let pkg_name = env::var("CARGO_PKG_NAME").expect("Cargo should set CARGO_PKG_NAME");
+        // The release bundles are upstream's, which name the driver crate rusteron-media-driver.
+        let bundle_name = if pkg_name == "rusteron-driver" {
+            "rusteron-media-driver".to_string()
+        } else {
+            pkg_name
+        };
         let bundle = staging_dir
             .join(format!("artifacts-{target_os}-{image}-{feature}"))
-            .join(pkg_name)
+            .join(bundle_name)
             .join("artifacts")
             .join(feature)
             .join(env::var("TARGET").expect("Cargo should set TARGET"));

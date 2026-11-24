@@ -1,6 +1,6 @@
 //! Compile-time trait checks and concurrent use of the native client.
 use rusteron_client::*;
-use rusteron_media_driver::{AeronDriver, AeronDriverContext, testing::EmbeddedDriver};
+use rusteron_driver::{AeronDriver, AeronDriverContext, testing::EmbeddedDriver};
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Barrier};
@@ -489,10 +489,10 @@ fn borrowed_driver_context_cannot_retain_native_pointers() {
     let context = AeronDriverContext::new().unwrap();
     let context = context.as_ref();
     // SAFETY: the borrowed setter rejects this empty value before passing it to C.
-    let tracker = unsafe { rusteron_media_driver::AeronDutyCycleTracker::new_zeroed_on_heap() };
+    let tracker = unsafe { rusteron_driver::AeronDutyCycleTracker::new_zeroed_on_heap() };
     assert!(context.set_sender_duty_cycle_tracker(&tracker).is_err());
     // SAFETY: the borrowed setter rejects this empty value before passing it to C.
-    let manager = unsafe { rusteron_media_driver::AeronPortManager::new_zeroed_on_heap() };
+    let manager = unsafe { rusteron_driver::AeronPortManager::new_zeroed_on_heap() };
     assert!(context.set_sender_port_manager(&manager).is_err());
 }
 

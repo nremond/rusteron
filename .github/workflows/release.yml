@@ -218,7 +218,7 @@ jobs:
 
       - name: Check docker example builds
         run: |
-          cd rusteron-docker-samples
+          cd rusteron-samples
           cargo update
           docker build -t aeron-media-driver aeron-media-driver
           docker build -t rusteron-dummy-example rusteron-dummy-example

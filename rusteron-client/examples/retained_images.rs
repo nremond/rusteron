@@ -10,7 +10,7 @@
 //! ```
 
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 

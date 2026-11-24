@@ -2,7 +2,7 @@
 
 `rusteron-code-gen` reads Aeron's C headers and generates fast, idiomatic Rust
 wrappers, bindings and callback traits used by `rusteron-client`, `rusteron-archive`
-and `rusteron-media-driver`. It is an internal build dependency.
+and `rusteron-driver`. It is an internal build dependency.
 Applications should depend on those crates instead.
 
 ## Sponsored by GSR

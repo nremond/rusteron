@@ -10,7 +10,7 @@ use rusteron_client::bindings::{
     aeron_subscription_poll,
 };
 use rusteron_client::*;
-use rusteron_media_driver::{AeronDriver, AeronDriverContext};
+use rusteron_driver::{AeronDriver, AeronDriverContext};
 use std::ffi::c_void;
 use std::hint::black_box;
 use std::sync::atomic::Ordering;

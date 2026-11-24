@@ -186,7 +186,7 @@ make_main_tree() {
     local sub tmp=$main_tree.partial
     if [[ -d $main_tree ]]; then return; fi
     mkdir -p "$tmp" && git -C "$repo" archive "$main_sha" | tar -x -C "$tmp" || return 1
-    for sub in rusteron-client/aeron rusteron-archive/aeron rusteron-media-driver/aeron; do
+    for sub in rusteron-client/aeron rusteron-archive/aeron rusteron-driver/aeron; do
         git -C "$repo/$sub" archive "$(git -C "$repo" rev-parse "$main_sha:$sub")" | tar -x -C "$tmp/$sub" || return 1
     done
     mv "$tmp" "$main_tree"

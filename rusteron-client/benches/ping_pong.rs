@@ -4,7 +4,7 @@ mod ping_pong_common;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use ping_pong_common::{Channels, run_ping, run_pong};
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;

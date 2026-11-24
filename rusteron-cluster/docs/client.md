@@ -73,7 +73,7 @@ The clients are at parity. At 64 and 1,024 in flight in memory, runs land near 4
 
 ```bash
 cargo test -p rusteron-cluster --test client --test client_codec
-cargo build -p rusteron-media-driver --bin media_driver --features static
+cargo build -p rusteron-driver --bin media_driver --features static
 cargo build -p rusteron-system-tests --features static
 CLIENT=rust SCENARIO=failover rusteron-system-tests/scripts/differential.sh 3
 cargo build --release -p rusteron-cluster --features static --bin consensus_module

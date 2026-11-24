@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 #[test]
 fn recording_id_lookup_validates_the_counter_and_reads_its_key() {
     let directory = std::env::temp_dir().join(format!("rusteron-recording-id-{}", Aeron::nano_clock()));
-    let driver = rusteron_media_driver::testing::EmbeddedDriver::launch_with(|context| {
+    let driver = rusteron_driver::testing::EmbeddedDriver::launch_with(|context| {
         context
             .set_dir(&directory.to_string_lossy().into_c_string())
             .map(|_| ())
@@ -43,7 +43,7 @@ fn recording_id_lookup_validates_the_counter_and_reads_its_key() {
 #[test]
 fn source_identity_is_bounded_by_the_caller_buffer() {
     let directory = std::env::temp_dir().join(format!("rusteron-source-identity-{}", Aeron::nano_clock()));
-    let driver = rusteron_media_driver::testing::EmbeddedDriver::launch_with(|context| {
+    let driver = rusteron_driver::testing::EmbeddedDriver::launch_with(|context| {
         context
             .set_dir(&directory.to_string_lossy().into_c_string())
             .map(|_| ())

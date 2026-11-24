@@ -10,7 +10,7 @@ use rusteron_client::bindings::{
     aeron_header_t, aeron_iovec_t, aeron_subscription_poll,
 };
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::ffi::{CStr, c_void};
 use std::hint::black_box;
 use std::time::{Duration, Instant};

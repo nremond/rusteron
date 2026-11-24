@@ -23,7 +23,7 @@ struct Ipc {
     publication: AeronPublication,
     subscription: AeronSubscription,
     aeron: Aeron,
-    driver: rusteron_media_driver::testing::EmbeddedDriver,
+    driver: rusteron_driver::testing::EmbeddedDriver,
 }
 
 fn client(dir: &str) -> Aeron {
@@ -39,7 +39,7 @@ fn client(dir: &str) -> Aeron {
 
 fn ipc(stream_id: i32) -> Ipc {
     rusteron_code_gen::test_logger::init(log::LevelFilter::Info);
-    let driver = rusteron_media_driver::testing::EmbeddedDriver::launch_with(|ctx| {
+    let driver = rusteron_driver::testing::EmbeddedDriver::launch_with(|ctx| {
         if running_under_valgrind() {
             ctx.set_client_liveness_timeout_ns(180_000_000_000)?;
             ctx.set_image_liveness_timeout_ns(180_000_000_000)?;

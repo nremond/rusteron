@@ -46,7 +46,7 @@ fix:
   cargo clippy --allow-dirty --allow-staged --fix --all-targets --all-features -- -W unused_imports -W clippy::all
   cargo clippy --allow-dirty --allow-staged --fix -- -W unused_imports -W clippy::all
   cargo fmt --all
-  cd rusteron-docker-samples/rusteron-dummy-example && just fix
+  cd rusteron-samples/rusteron-dummy-example && just fix
 
 # Check dependencies
 deps:
@@ -57,18 +57,18 @@ deps:
 clean:
   rm -rf rusteron-archive/target
   rm -rf rusteron-client/target
-  rm -rf rusteron-media-driver/target
+  rm -rf rusteron-driver/target
   rm -rf rusteron-archive/artifacts
   rm -rf rusteron-client/artifacts
-  rm -rf rusteron-media-driver/artifacts
-  rm -rf rusteron-docker-samples/target
-  rm -rf rusteron-docker-samples/rusteron-dummy-example/target
+  rm -rf rusteron-driver/artifacts
+  rm -rf rusteron-samples/target
+  rm -rf rusteron-samples/rusteron-dummy-example/target
   cd rusteron-archive/aeron/aeron-all && ./gradlew --no-daemon clean || true && cd -
   cd rusteron-client/aeron/aeron-all && ./gradlew --no-daemon clean || true && cd -
-  cd rusteron-media-driver/aeron/aeron-all && ./gradlew --no-daemon clean || true && cd -
+  cd rusteron-driver/aeron/aeron-all && ./gradlew --no-daemon clean || true && cd -
   cd rusteron-archive/aeron && git submodule update --init --recursive --checkout && git reset --hard && git clean -fdx && cd -
   cd rusteron-client/aeron && git submodule update --init --recursive --checkout && git reset --hard && git clean -fdx && cd -
-  cd rusteron-media-driver/aeron && git submodule update --init --recursive --checkout && git reset --hard && git clean -fdx && cd -
+  cd rusteron-driver/aeron && git submodule update --init --recursive --checkout && git reset --hard && git clean -fdx && cd -
   cargo clean
 
 # Build the project in release mode
@@ -90,7 +90,7 @@ test-precompiled-bindings *args:
   set -euo pipefail
   PUBLISH_ARTIFACTS=true cargo build --release --workspace --features static
   # Remove cached builds so each crate's build script loads its bundle.
-  cargo clean --profile dev -p rusteron-client -p rusteron-archive -p rusteron-media-driver
+  cargo clean --profile dev -p rusteron-client -p rusteron-archive -p rusteron-driver
   # Use temporary files because /dev/shm can be too small for Aeron term buffers.
   test_dir=$(mktemp -d "${TMPDIR:-/tmp}/rusteron-precompiled.XXXXXX")
   trap 'rm -r -- "$test_dir"' EXIT
@@ -101,8 +101,8 @@ test-precompiled-bindings *args:
 # Build Docker Samples
 build-docker-samples:
     cargo update
-    cd rusteron-docker-samples/rusteron-dummy-example && cargo build --release && cd ..
-    cd rusteron-docker-samples && just build
+    cd rusteron-samples/rusteron-dummy-example && cargo build --release && cd ..
+    cd rusteron-samples && just build
 
 # Run all criterion benchmarks
 bench:
@@ -383,7 +383,7 @@ run-aeron-media-driver-rust:
     AERON_RECEIVER_IDLE_STRATEGY=noop \
     AERON_DIR=target/aeron \
     AERON_TERM_BUFFER_SPARSE_FILE=false \
-    cargo run --release --package rusteron-media-driver --bin media_driver
+    cargo run --release --package rusteron-driver --bin media_driver
 
 # =============================================================================
 # Benchmarks
@@ -514,7 +514,7 @@ update-aeron-version version:
     TARGET=${RAW#refs/}
     TARGET=${TARGET#tags/}
     echo "Updating Aeron submodules to tag/branch/commit input='${RAW}' normalised='${TARGET}'"
-    for DIR in rusteron-client/aeron rusteron-archive/aeron rusteron-media-driver/aeron; do
+    for DIR in rusteron-client/aeron rusteron-archive/aeron rusteron-driver/aeron; do
       echo "-- $DIR"
       (
         cd "$DIR"
@@ -546,7 +546,7 @@ update-aeron-version version:
 # Show current Aeron submodule commits (describe + branch/detached)
 show-aeron-version:
     set -euo pipefail
-    for DIR in rusteron-client/aeron rusteron-archive/aeron rusteron-media-driver/aeron; do \
+    for DIR in rusteron-client/aeron rusteron-archive/aeron rusteron-driver/aeron; do \
       ( cd $DIR; \
         BR=$(git branch --show-current || echo detached); \
         CM=$(git rev-parse --short HEAD); \

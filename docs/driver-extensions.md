@@ -1,7 +1,7 @@
 # Driver extensions
 
 Typed Rust hooks for the embedded media driver. One runnable file per extension is in
-[`examples/extensions`](../rusteron-media-driver/examples/extensions/README.md).
+[`examples/extensions`](../rusteron-driver/examples/extensions/README.md).
 
 ## Rules
 
@@ -40,8 +40,8 @@ Typed Rust hooks for the embedded media driver. One runnable file per extension 
 ## Tests
 
 ```sh
-cargo test -p rusteron-media-driver --features static
-cargo test -p rusteron-media-driver-links-test --features rusteron-media-driver/static
+cargo test -p rusteron-driver --features static
+cargo test -p rusteron-driver-links-test --features rusteron-driver/static
 ```
 
 `just test-tsan` runs the ThreadSanitizer checks on Linux. See [thread safety](thread-safety.md#threadsanitizer).

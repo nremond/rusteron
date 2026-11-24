@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs NODES Java Aeron Cluster 1.54.2 nodes, each on its own C media driver
-# from rusteron-media-driver, with the Java echo service, then an echo client
+# from rusteron-driver, with the Java echo service, then an echo client
 # on a C driver of its own. Exits 0 when every echo came back in order.
 #
 #   scripts/skeleton.sh [NODES] [COUNT]
@@ -45,7 +45,7 @@ await_line() { # file pattern
   return 1
 }
 
-[[ -x "$DRIVER" ]] || cargo build -q -p rusteron-media-driver --bin media_driver --manifest-path "$REPO/Cargo.toml"
+[[ -x "$DRIVER" ]] || cargo build -q -p rusteron-driver --bin media_driver --manifest-path "$REPO/Cargo.toml"
 
 for ((n = 0; n < NODES; n++)); do
   start_driver "$WORK/aeron-$n" "$WORK/driver-$n.log"

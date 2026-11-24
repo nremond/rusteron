@@ -84,7 +84,7 @@ fn owned_channel_getter_keeps_its_snapshot_after_reconfiguration() {
 
 #[test]
 fn rust_owned_client_cannot_be_transferred_to_archive_context() {
-    let driver = rusteron_media_driver::testing::EmbeddedDriver::launch().unwrap();
+    let driver = rusteron_driver::testing::EmbeddedDriver::launch().unwrap();
     let client = Aeron::connect_dir(driver.dir()).unwrap();
     let context = AeronArchiveContext::new().unwrap();
     assert!(context.set_owns_aeron_client(true).is_err());
@@ -97,7 +97,7 @@ fn rust_owned_client_cannot_be_transferred_to_archive_context() {
 
 #[test]
 fn deleting_one_proxy_clone_keeps_the_other_usable() {
-    let driver = rusteron_media_driver::testing::EmbeddedDriver::launch().unwrap();
+    let driver = rusteron_driver::testing::EmbeddedDriver::launch().unwrap();
     let client = Aeron::connect_dir(driver.dir()).unwrap();
     let publication = client
         .add_exclusive_publication(c"aeron:ipc", 87123, Duration::from_secs(5))

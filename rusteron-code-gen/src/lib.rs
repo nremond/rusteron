@@ -521,7 +521,7 @@ mod tests {
         // Mirrors the media_driver trybuild test's filter.
         assert_aeron_rs_snapshot_matches(
             "media-driver.rs",
-            "../rusteron-media-driver/docs-rs/aeron.rs",
+            "../rusteron-driver/docs-rs/aeron.rs",
             |t| !t.contains("pthread") && !t.contains("_t_"),
             &[],
         );
@@ -656,7 +656,7 @@ mod tests {
         for (crate_name, extra) in [
             ("client", no_extra),
             ("archive", &[crate::CUSTOM_ARCHIVE_CODE][..]),
-            ("media-driver", no_extra),
+            ("driver", no_extra),
         ] {
             // emulate append_to_file: each chunk is written as "\n{chunk}\n"
             let mut source = format!("\n{}\n", CUSTOM_AERON_CODE);

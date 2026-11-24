@@ -7,7 +7,7 @@ mod benchmark_support;
 use benchmark_support::{MessageCounts, print_histogram, spawn_peer};
 use hdrhistogram::Histogram;
 use rusteron_client::*;
-use rusteron_media_driver::testing::EmbeddedDriver;
+use rusteron_driver::testing::EmbeddedDriver;
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
