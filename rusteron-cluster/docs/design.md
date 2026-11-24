@@ -5,7 +5,7 @@ Aeron Cluster re-implemented in Rust, in this fork of rusteron, wire- and on-dis
 | | |
 |---|---|
 | **Status** | M1 done, 2026-10-27. A Rust service runs in a Rust container beside a Java service on a Java 1.53.3 consensus module and archive, over Aeron's C media driver: started, joined, snapshotted, restarted from its snapshot, through a leader's failover, terminated. Every scenario's traces match the Java twin's line for line, and the container's part of every snapshot is Java's bytes; the six scenarios passed 20 times in a row, 120 runs, none failed, on macOS (arm64) and on Linux (x86_64) (§5). Measured on 2026-10-28, one node: the Rust container is at parity with Java's, applying the log 1.0–1.4 µs after append at p50 and answering a client in 9.2–9.9 µs round trip at p50, with p99.99 and maxima mostly shorter (§6). |
-| **Code** | `rusteron-cluster` (Aeron's SBE codecs, generated, checked against Java's bytes), `rusteron-cluster` (the container as a sans-IO state machine: `service`, plus `log`, `position`, `counters`, `markfile`, and a `testkit`), `rusteron-cluster` (the shell: `container.rs`, `markfile.rs`), `rusteron-cluster-interop` (the Rust test service, `rust_service_node`, the Java side, `scripts/`) |
+| **Code** | `rusteron-cluster` (Aeron's SBE codecs, generated, checked against Java's bytes), `rusteron-cluster` (the container as a sans-IO state machine: `service`, plus `log`, `position`, `counters`, `markfile`, and a `testkit`), `rusteron-cluster` (the shell: `container.rs`, `markfile.rs`), `rusteron-system-tests` (the Rust test service, `rust_service_node`, the Java side, `scripts/`) |
 | **Plan** | Re-implement Aeron Cluster one piece at a time, each replacing its Java twin inside a working Java cluster, Java the oracle at every step: M0 foundations, M1 service container (this), M2 archive server, M3 consensus module, M4 cluster client, M5 the cluster backup and a node with no JVM, M6 operations. |
 | **Licence** | The four crates are Apache-2.0 only, as Aeron is: they are derived from its schemas and behaviour (`NOTICE` in each). rusteron's own crates stay MIT OR Apache-2.0. |
 
@@ -79,7 +79,7 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 
 **The core** (`rusteron-cluster`, 22 unit tests, 11 container tests) against the testkit: a log writer that frames messages as a publication does, the consensus module's messages, a fake consensus module holding acks to Java's rule. A whole life through a snapshot and termination; a restart from that snapshot; a snapshot cut short; a refused join tried again; 1,000 timers under refusals arriving in order; a full queue holding the log; an answer offered in the poll that applied its message; a refused answer offered again, in its place, with the session's next answers behind it; a follower's egress mocked; the log ended at the next join. A property test (200 cases): logs of random messages up to 6,000 bytes, framed at MTUs of 1,408 to 8,192, committed a few at a time, polled a few fragments at a time, with random retries: each message applied once, in order, at the position after its last frame, and what a refused delivery sent discarded.
 
-**Against Java** (`rusteron-cluster-interop`, `scripts/differential.sh`): a Java 1.53.3 consensus module and archive per node, the Rust test service as service 0 and its Java twin (`OracleService.java`, the same logic) as service 1 of the same log, each node on its own C media driver, a Java client. Every scenario sends 1,000 messages, snapshots through `ClusterTool`, sends 1,000 more, then:
+**Against Java** (`rusteron-system-tests`, `scripts/differential.sh`): a Java 1.53.3 consensus module and archive per node, the Rust test service as service 0 and its Java twin (`OracleService.java`, the same logic) as service 1 of the same log, each node on its own C media driver, a Java client. Every scenario sends 1,000 messages, snapshots through `ClusterTool`, sends 1,000 more, then:
 
 | Scenario | What happens | One run on this Mac |
 |---|---|---|
@@ -198,12 +198,12 @@ Building Aeron C needs CMake, and a JDK older than 27 for Aeron's Gradle (25 wor
 export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 BUILD_JAVA_HOME=$JAVA_HOME
 cargo test -p rusteron-cluster -p rusteron-cluster -p rusteron-cluster
 cargo build -p rusteron-media-driver --bin media_driver --features static
-cargo build -p rusteron-cluster-interop --features static
-SCENARIO=failover rusteron-cluster-interop/scripts/differential.sh 3 1000
-rusteron-cluster-interop/scripts/repeat.sh 20
+cargo build -p rusteron-system-tests --features static
+SCENARIO=failover rusteron-system-tests/scripts/differential.sh 3 1000
+rusteron-system-tests/scripts/repeat.sh 20
 cargo build --release -p rusteron-media-driver --bin media_driver --features static
-cargo build --release -p rusteron-cluster-interop --features static
-rusteron-cluster-interop/scripts/bench.sh "1000 10000 100000 200000"   # on an otherwise idle machine
+cargo build --release -p rusteron-system-tests --features static
+rusteron-system-tests/scripts/bench.sh "1000 10000 100000 200000"   # on an otherwise idle machine
 ```
 
 `AERON_ALL_JAR` names the Java 1.54.2 jar (default: the local Maven repository); `KEEP=1` keeps a run's work directory, logs, traces and archives.
@@ -248,7 +248,7 @@ Aeron C 1.54's fail-fast client (every call refused once a fatal error has close
 - **The fork's CI steps**: fmt, clippy with warnings denied, the doc tests, the release build and the workspace's 1,562 tests pass. The simulator runs 20,000 seeds with faults and 5,000 with held links, none failing.
 - **Found on the way**, besides the destination command above: a harness race. JavaNode closed its archive while the Rust module beside it could still be terminating, and that module then ended as failed, its archive gone. It failed 1 run in 10 of the mixed quorum-loss scenario, on 1.53.3 as on 1.54.2. JavaNode now waits for the module first, as a Java node closes its module before its archive: 20 runs out of 20 since.
 
-**Jepsen on 1.54.2** (2026-11-24, `rusteron-cluster-interop/jepsen`, its Aeron now set by `AERON_VERSION`):
+**Jepsen on 1.54.2** (2026-11-24, `rusteron-system-tests/jepsen`, its Aeron now set by `AERON_VERSION`):
 - Rust members are valid in all six runs: random faults and the two staged election scenarios, twice each.
 - Java 1.54.2 members are valid under random faults, and fail both staged scenarios as 1.53.3 did. In one, two members cut their logs below their commit position; in the other, no transaction succeeds after the heal.
 - aeron-io/aeron#2212 fixes these in Java, but is in no release yet.

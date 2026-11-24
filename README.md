@@ -70,8 +70,8 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 | [rusteron-archive](rusteron-archive/README.md) | Aeron Archive's server (`aeron_archive`): what a cluster asks of its archive |
 | [rusteron-archive](rusteron-archive/README.md) | The archive server's sans-IO core: the catalog, the segment files, the control protocol |
 | [rusteron-archive](rusteron-archive/README.md) | Aeron Archive 1.54.2's SBE codecs |
-| [rusteron-cluster-sim](rusteron-cluster-sim/README.md) | A deterministic simulator of a cluster of Rust consensus modules (not published) |
-| [rusteron-cluster-interop](rusteron-cluster-interop/README.md) | Tests beside Java Aeron Cluster 1.54.2, and the scenario scripts (not published) |
+| [rusteron-system-tests](rusteron-system-tests/README.md) | A deterministic simulator of a cluster of Rust consensus modules (not published) |
+| [rusteron-system-tests](rusteron-system-tests/README.md) | Tests beside Java Aeron Cluster 1.54.2, and the scenario scripts (not published) |
 
 **Tested against Java 1.54.2:**
 
@@ -86,7 +86,7 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 - The simulator: 20,000 seeds with faults and 5,000 with held links.
 - Jepsen with Elle, on three members: Rust members are valid under random partitions, kills and
   pauses, and in two staged election scenarios where Java 1.54.2 members cut committed entries or
-  stop serving ([rusteron-cluster-interop/jepsen](rusteron-cluster-interop/jepsen/README.md)).
+  stop serving ([rusteron-system-tests/jepsen](rusteron-system-tests/jepsen/README.md)).
 
 **Out of scope:** dynamic membership, consensus module extensions, authenticators other than the
 default, IPC ingress, recording-log validation, and the archive requests a cluster does not make.
@@ -98,7 +98,7 @@ and the archive starts over a recording with no frame after a page-aligned start
 **Design notes:** the [service container](rusteron-cluster/docs/design.md), the
 [consensus module](rusteron-cluster/docs/consensus.md), the [client](rusteron-cluster/docs/client.md),
 the [backup](rusteron-cluster/docs/backup.md) and the [archive server](rusteron-archive/docs/design.md).
-The scenarios are in `rusteron-cluster-interop/scripts`.
+The scenarios are in `rusteron-system-tests/scripts`.
 
 ## Getting started
 

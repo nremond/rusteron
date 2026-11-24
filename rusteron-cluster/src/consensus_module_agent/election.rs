@@ -9,7 +9,7 @@
 //! step the duty cycle checks.
 //!
 //! Where Java's election is laxer, Raft's rules hold, with nothing changed
-//! on the wire (`rusteron-cluster-sim` and the Jepsen suite show Java's ways
+//! on the wire (`rusteron-system-tests` and the Jepsen suite show Java's ways
 //! losing committed entries):
 //! - a member that voted in a term follows no leader of an older one, and
 //!   canvasses with the term it voted in;

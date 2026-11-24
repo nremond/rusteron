@@ -5,7 +5,7 @@ Part of the fifth milestone of Aeron Cluster in Rust (see `design.md` for the se
 | | |
 |---|---|
 | **Status** | M5, 2026-11-01. A Rust `ClusterBackup`: the query, the snapshots copied, the live log recorded from a member's bounded replay, the recording log kept, a stall or an error reset, a restart extending what it recorded. Beside Java's backup on one cluster, Java's modules or Rust's, it holds the leader's log byte for byte with the same recording log, through a failover too; Aeron's own `ClusterBackupTest` passes as Java's backup does (§5). The simulator runs it among its faults over 10,500 seeds. An application's Rust standby embeds it. |
-| **Code** | `rusteron-cluster::backup` (the backup: `ClusterBackupAgent`, its `Ports`, `Action`s and `Event`s); `rusteron-cluster::backup` (the shell: `ClusterBackupNode`, `spawn`, `BackupListener`; binary `cluster_backup`); `rusteron-cluster` (its counters and mark file header); `rusteron-cluster-sim` (`--backup`); `rusteron-cluster-interop` (`scripts/backup.sh`, `java/JavaBackup.java`, `java/BackupCheck.java`; `RustBackup` in `aeron-tests`). |
+| **Code** | `rusteron-cluster::backup` (the backup: `ClusterBackupAgent`, its `Ports`, `Action`s and `Event`s); `rusteron-cluster::backup` (the shell: `ClusterBackupNode`, `spawn`, `BackupListener`; binary `cluster_backup`); `rusteron-cluster` (its counters and mark file header); `rusteron-system-tests` (`--backup`); `rusteron-system-tests` (`scripts/backup.sh`, `java/JavaBackup.java`, `java/BackupCheck.java`; `RustBackup` in `aeron-tests`). |
 | **Licence** | Apache-2.0 only, as Aeron: derived from its schemas and behaviour. |
 
 ---
@@ -37,7 +37,7 @@ Out of scope: Java's agent runner and invoker settings and thread factory (the s
 
 **The shell** (`rusteron-cluster::backup`, binary `cluster_backup`) runs it on one thread with the C client's conductor invoked there every millisecond, as the consensus module's shell does, with Java's `ClusterBackup.Context` options. A member's archive with a response endpoint is reached on a response channel: the subscription first, the publication then naming it, as Java's `AsyncConnect` does. To embed it, `spawn(ctx, listener)` runs a backup on a thread of its own with an Aeron client of its own, and returns once it has started; `ClusterBackupNode::launch` and `run` run one on the caller's thread. `BackupListener` is Java's `ClusterBackupEventsListener`, called on the backup's thread, plus `on_terminated`.
 
-**The simulator** (`rusteron-cluster-sim`, `--backup`) runs a backup beside the members on an archive of its own: it queries them on the consensus stream, its cluster archive session is a control session of the member's archive, and the member's replays reach its catch-up endpoint at the network's level, as the log reaches followers. Its source type comes from the seed; its process crashes and restarts on its files, and its links to members are cut, among the members' faults.
+**The simulator** (`rusteron-system-tests`, `--backup`) runs a backup beside the members on an archive of its own: it queries them on the consensus stream, its cluster archive session is a control session of the member's archive, and the member's replays reach its catch-up endpoint at the network's level, as the log reaches followers. Its source type comes from the seed; its process crashes and restarts on its files, and its links to members are cut, among the members' faults.
 
 ## 4. Choices, and why
 
@@ -75,12 +75,12 @@ None of the backup's own: it records the log at the pace of the member archive's
 
 ```bash
 cargo test -p rusteron-cluster --test backup
-cargo run -p rusteron-cluster-sim --release --bin cluster_sim -- --seeds 0..1000 --backup
+cargo run -p rusteron-system-tests --release --bin cluster_sim -- --seeds 0..1000 --backup
 cargo build --release -p rusteron-media-driver --bin media_driver --features static
 cargo build --release -p rusteron-archive --features static,server
 cargo build --release -p rusteron-cluster --features static --bin cluster_backup --bin consensus_module
-SCENARIO=failover rusteron-cluster-interop/scripts/backup.sh
-CM=rust SCENARIO=failover rusteron-cluster-interop/scripts/backup.sh
-JAVA_CM=1 RUST_BACKUP=1 rusteron-cluster-interop/aeron-tests/run.sh io.aeron.cluster.ClusterBackupTest
-RUST_BACKUP=1 rusteron-cluster-interop/aeron-tests/run.sh io.aeron.cluster.ClusterBackupTest
+SCENARIO=failover rusteron-system-tests/scripts/backup.sh
+CM=rust SCENARIO=failover rusteron-system-tests/scripts/backup.sh
+JAVA_CM=1 RUST_BACKUP=1 rusteron-system-tests/aeron-tests/run.sh io.aeron.cluster.ClusterBackupTest
+RUST_BACKUP=1 rusteron-system-tests/aeron-tests/run.sh io.aeron.cluster.ClusterBackupTest
 ```

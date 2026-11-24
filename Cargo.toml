@@ -5,9 +5,8 @@ members = [
     "rusteron-media-driver/links-test",
     "rusteron-client",
     "rusteron-archive",
-    "rusteron-cluster-sim",
     "rusteron-cluster",
-    "rusteron-cluster-interop",
+    "rusteron-system-tests",
 ]
 exclude = ["rusteron-docker-samples/rusteron-dummy-example"]
 resolver = "2"

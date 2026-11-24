@@ -16,8 +16,8 @@ wire- and on-disk-compatible with Aeron 1.54.2.
   - their SBE codecs (`rusteron-cluster`).
 - Added Aeron Archive's server for what a cluster asks of its archive (`rusteron-archive`),
   its sans-IO core (`rusteron-archive`) and its SBE codecs (`rusteron-archive`).
-- Added a deterministic simulator (`rusteron-cluster-sim`) and tests beside Java Aeron Cluster
-  1.54.2 (`rusteron-cluster-interop`). Neither is published.
+- Added a deterministic simulator (`rusteron-system-tests`) and tests beside Java Aeron Cluster
+  1.54.2 (`rusteron-system-tests`). Neither is published.
 - Valgrind runs only on the crates that call Aeron C.
 
 ## 0.3.2

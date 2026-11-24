@@ -1,0 +1,11 @@
+rusteron-system-tests
+
+These tests re-implement, in Rust, parts of Aeron Cluster
+(https://github.com/aeron-io/aeron), version 1.54.2, to check rusteron against
+it: the simulator's consensus module behaviour and its test services follow
+Aeron's Java sources:
+
+    Copyright 2014-2025 Real Logic Limited.
+    Licensed under the Apache License, Version 2.0.
+
+The crate as a whole is licensed under the Apache License, Version 2.0.
