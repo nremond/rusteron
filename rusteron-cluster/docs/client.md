@@ -5,7 +5,7 @@ The fourth milestone of Aeron Cluster in Rust (see `design.md` for the service c
 | | |
 |---|---|
 | **Status** | M4, 2026-10-31. A Rust `AeronCluster`: the connect, redirects, challenges, offers, keepalives, admin requests, the egress and its session events, a new leader followed, the session closed. Every interop scenario passes with it on Java's modules, Rust's and mixes; Aeron's own client cases pass on both module kinds, the authentication ones on Java's only (§5). The simulator's client is the real one, and 22,000 seeds of faults pass. An application's bench on it measures at parity with Java's client (§6). Its tests found two faults in the Rust consensus module, both fixed. |
-| **Code** | `rusteron-cluster-core::client` (the client: `connect.rs`, `session.rs`, `codec.rs`, the `ClientPorts` trait); `rusteron-cluster::client` (the shell: `AeronCluster`, `AsyncConnect`); `rusteron-cluster-sim` (the simulator's client on the core); `rusteron-cluster-interop` (`echo_client`, `bench_client`, `client_lines`; `RustClientTest` in `aeron-tests`). |
+| **Code** | `rusteron-cluster::client` (the client: `connect.rs`, `session.rs`, `codec.rs`, the `ClientPorts` trait); `rusteron-cluster::client` (the shell: `AeronCluster`, `AsyncConnect`); `rusteron-cluster-sim` (the simulator's client on the core); `rusteron-cluster-interop` (`echo_client`, `bench_client`, `client_lines`; `RustClientTest` in `aeron-tests`). |
 | **Licence** | Apache-2.0 only, as Aeron: derived from its schemas and behaviour. |
 
 ---
@@ -21,13 +21,13 @@ Java 1.53.3's `AeronCluster`, read from the source, kept as Java does it:
 - **The connect** (`AsyncConnect`): one deadline for the whole connect, `messageTimeoutNs` (5 s). The egress subscription first, then its port resolved for the response channel, with `rejoin=false` added to a UDP egress. With ingress endpoints, a publication to every member, all added before any is used, and the connect request sent through the first that connects; without them, one publication on the ingress channel as given, multicast or IPC. A follower's REDIRECT re-parses the members, the leader's publication kept if its endpoint is unchanged. A challenge is answered through a `CredentialsSupplier`. ERROR and AUTHENTICATION_REJECTED fail the connect, CLOSED is ignored, messages of other schemas skipped. The new leader timeout is twice the leader heartbeat timeout unless given.
 - **The connected client**: offers with the 32-byte session header pre-encoded, as one message or in parts; keepalives and the snapshot admin request, tried three times; the egress polled ten messages at most, each for this session only, through `EgressListener` or `ControlledEgressListener` (`on_message`, `on_session_event`, `on_new_leader`, `on_admin_response`). A message of another schema is an error, as Java's `EgressAdapter` throws without an extension.
 - **The states**: CONNECTED, AWAIT_NEW_LEADER, AWAIT_NEW_LEADER_CONNECTION, PENDING_CLOSE, CLOSED, with Java's transitions. An offer refused as NOT_CONNECTED or CLOSED, or the egress image going, awaits a new leader; a NewLeaderEvent switches the ingress to it, and only an offer that goes through counts it connected. MAX_POSITION_EXCEEDED, the cluster's CLOSED event, or no new leader within the timeout close the session.
-- **The context**: Java's settings and defaults (ingress and egress channels, streams 101 and 102, endpoints, message timeout, new leader timeout, client name, exclusive ingress), and `conclude()`'s checks. The client says it is `version=1.54.2 commit=rusteron-cluster-core-<version>`.
+- **The context**: Java's settings and defaults (ingress and egress channels, streams 101 and 102, endpoints, message timeout, new leader timeout, client name, exclusive ingress), and `conclude()`'s checks. The client says it is `version=1.54.2 commit=rusteron-cluster-<version>`.
 
 Out of scope: `tryClaim` (offers copy), the extension listeners for other schemas, Java's agent-invoker settings (the shell has its own, §3), `isDirectAssemblers`, a cluster backup's client side (Java's `ClusterBackup` covers it, `consensus.md` §5).
 
 ## 3. The design
 
-**The core** (`rusteron-cluster-core::client`, `forbid(unsafe_code)`): `Connect` is `AsyncConnect` step by step, `poll` returning the connected `Client` once done; `Client` is the connected `AeronCluster`. Both reach Aeron through the `ClientPorts` trait: asynchronous adds and removes, offers of parts, a controlled poll that hands over whole messages with their image, whether an image went, the clock, correlation ids. The codecs are written by hand and check every length, against Java's bytes (Challenge's fixture added to the golden ones).
+**The core** (`rusteron-cluster::client`, `forbid(unsafe_code)`): `Connect` is `AsyncConnect` step by step, `poll` returning the connected `Client` once done; `Client` is the connected `AeronCluster`. Both reach Aeron through the `ClientPorts` trait: asynchronous adds and removes, offers of parts, a controlled poll that hands over whole messages with their image, whether an image went, the clock, correlation ids. The codecs are written by hand and check every length, against Java's bytes (Challenge's fixture added to the golden ones).
 
 **The shell** (`rusteron-cluster::client`): `AeronCluster::connect` blocks on the core with Java's backoff; `async_connect` returns an `AsyncConnect` the caller polls. It reassembles egress fragments per image and learns of lost images from the C client's callbacks. Its Aeron client is the caller's or its own, run by a conductor thread or, with `use_conductor_agent_invoker`, from its polls; `ClientIdle` picks spinning or Java's backoff.
 
@@ -42,7 +42,7 @@ Out of scope: `tryClaim` (offers copy), the extension listeners for other schema
 
 ## 5. Tests
 
-- **Unit tests** (`rusteron-cluster-core`): 26 scenarios on fake ports with a virtual clock, from Java's `AeronClusterAsyncConnectTest`, `AeronClusterTest`, `EgressPollerTest`, `EgressAdapterTest` and `AeronClusterContextTest`, and one per rule they leave out: the challenge, the leader's publication kept on a redirect, the connect's single deadline. Five codec tests check the client's messages against Java's bytes.
+- **Unit tests** (`rusteron-cluster`): 26 scenarios on fake ports with a virtual clock, from Java's `AeronClusterAsyncConnectTest`, `AeronClusterTest`, `EgressPollerTest`, `EgressAdapterTest` and `AeronClusterContextTest`, and one per rule they leave out: the challenge, the leader's publication kept on a redirect, the connect's single deadline. Five codec tests check the client's messages against Java's bytes.
 - **The simulator**: 20,000 seeds with faults and 2,000 with 60 s of faults pass with the real client, as do the regression seeds.
 - **Interop** (`differential.sh` with `CLIENT=rust`): `echo_client` and `bench_client` are `EchoClient.java`'s and `BenchClient.java`'s twins. `repeat.sh` passes every scenario 3 times on Java's modules, 13 on Rust's, twice with a Rust module on node 0 and on nodes 1 and 2, and twice on Rust's modules and archives. Two of the harness's assumptions broke on a client that starts in milliseconds:
   - In `uncommitted`, the client had every echo back before the leader was killed. It now sends ten times as many, and the scenario fails if nothing was left uncommitted.
@@ -72,7 +72,7 @@ The clients are at parity. At 64 and 1,024 in flight in memory, runs land near 4
 ## 7. Run it
 
 ```bash
-cargo test -p rusteron-cluster-core --test client --test client_codec
+cargo test -p rusteron-cluster --test client --test client_codec
 cargo build -p rusteron-media-driver --bin media_driver --features static
 cargo build -p rusteron-cluster-interop --features static
 CLIENT=rust SCENARIO=failover rusteron-cluster-interop/scripts/differential.sh 3

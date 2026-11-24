@@ -64,9 +64,9 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 | Crate | What it is |
 | --- | --- |
 | [rusteron-cluster](rusteron-cluster/README.md) | The shells: the service container, the cluster client, the consensus module (`consensus_module`) and the cluster backup (`cluster_backup`) |
-| [rusteron-cluster-core](rusteron-cluster-core/README.md) | The service container's sans-IO core |
-| [rusteron-consensus-core](rusteron-consensus-core/README.md) | The consensus module's sans-IO core |
-| [rusteron-cluster-codecs](rusteron-cluster-codecs/README.md) | Aeron Cluster 1.54.2's SBE codecs |
+| [rusteron-cluster](rusteron-cluster/README.md) | The service container's sans-IO core |
+| [rusteron-cluster](rusteron-cluster/README.md) | The consensus module's sans-IO core |
+| [rusteron-cluster](rusteron-cluster/README.md) | Aeron Cluster 1.54.2's SBE codecs |
 | [rusteron-archive](rusteron-archive/README.md) | Aeron Archive's server (`aeron_archive`): what a cluster asks of its archive |
 | [rusteron-archive](rusteron-archive/README.md) | The archive server's sans-IO core: the catalog, the segment files, the control protocol |
 | [rusteron-archive](rusteron-archive/README.md) | Aeron Archive 1.54.2's SBE codecs |

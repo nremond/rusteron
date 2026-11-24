@@ -10,10 +10,10 @@ On 0.3.2, with Aeron C 1.54.2. The existing crates are unchanged. All of these c
 wire- and on-disk-compatible with Aeron 1.54.2.
 
 - Added the Aeron Cluster crates:
-  - the service container and the consensus module as sans-IO cores (`rusteron-cluster-core`,
-    `rusteron-consensus-core`);
+  - the service container and the consensus module as sans-IO cores (`rusteron-cluster`,
+    `rusteron-cluster`);
   - their shells on Aeron's C client, with the cluster client and backup (`rusteron-cluster`);
-  - their SBE codecs (`rusteron-cluster-codecs`).
+  - their SBE codecs (`rusteron-cluster`).
 - Added Aeron Archive's server for what a cluster asks of its archive (`rusteron-archive`),
   its sans-IO core (`rusteron-archive`) and its SBE codecs (`rusteron-archive`).
 - Added a deterministic simulator (`rusteron-cluster-sim`) and tests beside Java Aeron Cluster

@@ -14,8 +14,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rusteron_archive::channel_uri::parse_size;
 use rusteron_cluster::Idle;
-use rusteron_cluster::consensus::{ConsensusContext, ConsensusModuleNode};
-use rusteron_consensus_core::config::{Config, TimeUnit};
+use rusteron_cluster::consensus_module::context::{Config, TimeUnit};
+use rusteron_cluster::consensus_module::{ConsensusContext, ConsensusModuleNode};
 
 struct StderrLogger;
 

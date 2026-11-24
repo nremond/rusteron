@@ -1,10 +1,23 @@
-//! Aeron Cluster's clustered service container on Aeron's C client, through
-//! rusteron: runs a Rust [`ClusteredService`] against Aeron Cluster's
-//! consensus module (Java's, 1.54.2), wire- and on-disk-compatible.
+//! Aeron Cluster in Rust, as Aeron's `io.aeron.cluster` package lays it out,
+//! wire- and on-disk-compatible with Aeron 1.54.2, on Aeron's C client.
 //!
-//! The container's logic is `rusteron-cluster-core`'s, a sans-IO state
-//! machine; this crate is its shell: the duty cycle, Aeron's publications,
-//! subscriptions and counters, the archive for snapshots, and the mark file.
+//! Each component is a sans-IO state machine (no clock, no randomness, no
+//! I/O), named after the Java class it follows, and a shell that drives it on
+//! the C client:
+//!
+//! - the consensus module: [`consensus_module`] (the shell and its context),
+//!   [`consensus_module_agent`] (with Election), [`session_manager`],
+//!   [`pending_service_message_tracker`], [`timer_service`],
+//!   [`cluster_member`], [`recording_log`], [`node_state_file`],
+//!   [`log_publisher`], [`consensus_adapter`], [`ingress_adapter`],
+//!   [`service_proxy`], [`consensus_module_snapshot_taker`] and
+//!   [`cluster_control`];
+//! - the cluster backup: [`cluster_backup`] and [`cluster_backup_agent`];
+//! - the clustered service container: [`service`] (`io.aeron.cluster.service`);
+//! - the cluster client: [`client`] (`io.aeron.cluster.client`);
+//! - the counters ([`cluster_counters`]) and the SBE codecs ([`codecs`]).
+//!
+//! A service on the container:
 //!
 //! ```no_run
 //! # use rusteron_cluster::*;
@@ -14,13 +27,30 @@
 //! # Ok(()) }
 //! ```
 
-pub mod backup;
-pub mod client;
-pub mod consensus;
-pub mod container;
-pub mod control;
-pub mod counters;
-pub mod markfile;
+#![deny(unsafe_code)]
 
-pub use container::{ContainerContext, ContainerError, Exit, Idle, ServiceContainer};
-pub use rusteron_cluster_core::service::*;
+pub mod client;
+pub mod cluster_backup;
+pub mod cluster_backup_agent;
+pub mod cluster_control;
+pub mod cluster_counters;
+pub mod cluster_member;
+pub mod codecs;
+pub mod consensus_adapter;
+pub mod consensus_module;
+pub mod consensus_module_agent;
+pub mod consensus_module_snapshot_taker;
+pub mod ingress_adapter;
+pub mod log_publisher;
+pub mod node_state_file;
+pub mod pending_service_message_tracker;
+pub mod recording_log;
+pub mod service;
+pub mod service_proxy;
+pub mod session_manager;
+#[cfg(any(test, feature = "testkit"))]
+pub mod testkit;
+pub mod timer_service;
+
+pub use service::clustered_service_container::{ContainerContext, ContainerError, Exit, Idle, ServiceContainer};
+pub use service::*;

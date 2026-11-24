@@ -223,7 +223,7 @@ impl ArchiveMarkFile {
 }
 
 /// How long a start tries for its lock while a tool looks at it (a probe
-/// holds it a moment: `rusteron_cluster::markfile::probe_lock`).
+/// holds it a moment: `rusteron_cluster::service::cluster_mark_file::io::probe_lock`).
 const LOCK_PATIENCE: Duration = Duration::from_millis(250);
 
 /// The lock of the mark file at `path` in `dir`, taken for an archive about

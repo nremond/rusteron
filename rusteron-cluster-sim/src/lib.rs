@@ -1,5 +1,5 @@
 //! A deterministic simulator of an Aeron Cluster whose every member runs the
-//! Rust consensus module (`rusteron-consensus-core`): the members, their
+//! Rust consensus module (`rusteron-cluster`): the members, their
 //! archives, services and a client on one thread in virtual time, the
 //! network between them at the level of the log's and the consensus
 //! stream's messages. A seed sets everything: latencies, faults, the
@@ -17,7 +17,7 @@
 //! after the faults committed, and every member's service has applied every
 //! client message any applied.
 //!
-//! With `backup`, a cluster backup (`rusteron-consensus-core::backup`)
+//! With `backup`, a cluster backup (`rusteron-cluster::backup`)
 //! runs beside the members on an archive of its own, its process crashing
 //! and its links cut among the faults. Checked: its live log position never
 //! goes back; at the end, it holds the log up to the commit position, every
@@ -45,10 +45,10 @@ pub mod service;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use rusteron_consensus_core::backup::SourceType;
-use rusteron_consensus_core::config::{Config, TimeUnit};
-use rusteron_consensus_core::io::CounterId;
-use rusteron_consensus_core::module::{ElectionState, ModuleState, Role, toggle};
+use rusteron_cluster::cluster_backup_agent::SourceType;
+use rusteron_cluster::consensus_module::context::{Config, TimeUnit};
+use rusteron_cluster::consensus_module_agent::ports::CounterId;
+use rusteron_cluster::consensus_module_agent::{ElectionState, ModuleState, Role, toggle};
 
 use crate::archive::ReplayTarget;
 use crate::backup::{BackupPacket, SimBackup, is_backup_endpoint};
@@ -261,7 +261,7 @@ struct World {
     backup_cut: BTreeSet<(Party, Party)>,
     /// The member each replay to the backup comes from, by its session.
     backup_replays: BTreeMap<i32, usize>,
-    backup_seen: Option<rusteron_consensus_core::backup::State>,
+    backup_seen: Option<rusteron_cluster::cluster_backup_agent::State>,
 }
 
 /// Runs the simulation of `seed`.
@@ -1009,7 +1009,7 @@ impl World {
             .max()
             .unwrap_or(0);
         self.backup.as_ref().is_some_and(|b| {
-            b.state() == Some(rusteron_consensus_core::backup::State::BackingUp)
+            b.state() == Some(rusteron_cluster::cluster_backup_agent::State::BackingUp)
                 && b.recorded_position() >= commit
                 && b.live_log_position() >= commit
         })

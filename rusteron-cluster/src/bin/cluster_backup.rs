@@ -22,7 +22,7 @@ use rusteron_archive::channel_uri::parse_size;
 use rusteron_cluster::Idle;
 use std::io::Write;
 
-use rusteron_cluster::backup::{
+use rusteron_cluster::cluster_backup::{
     BackupContext, BackupListener, ClusterBackupNode, ClusterMember, Exit, ReplayStart, Snapshot, SourceType,
 };
 

@@ -1,6 +1,6 @@
 # rusteron-cluster-sim
 
-A deterministic simulator of an Aeron Cluster whose every member runs the Rust consensus module (`rusteron-consensus-core`). The members, their archives, their services and a client run on one thread in virtual time; a seed sets everything, and the same seed replays the same run.
+A deterministic simulator of an Aeron Cluster whose every member runs the Rust consensus module (`rusteron-cluster`). The members, their archives, their services and a client run on one thread in virtual time; a seed sets everything, and the same seed replays the same run.
 
 ```bash
 cargo run -p rusteron-cluster-sim --release --bin cluster_sim -- --seeds 0..1000

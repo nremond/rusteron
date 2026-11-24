@@ -79,7 +79,7 @@ Committed entries leave every log, and the cluster stops serving.
 
 With `:rejoined`, Java 1.53.3 also fails it in both staged scenarios: every member is still in an election at the end.
 
-The Rust consensus module now applies Raft's rules where Java's election is laxer (see `rusteron-consensus-core/src/module/election.rs`): the losses go, and every member comes back. aeron-io/aeron#2212 fixes the losses in Java; built and run here, it leaves the leader of the abandoned term in LEADER_LOG_REPLICATION for good.
+The Rust consensus module now applies Raft's rules where Java's election is laxer (see `rusteron-cluster/src/module/election.rs`): the losses go, and every member comes back. aeron-io/aeron#2212 fixes the losses in Java; built and run here, it leaves the leader of the abandoned term in LEADER_LOG_REPLICATION for good.
 
 **The Rust fix.** The first random run on Rust nodes found a bug of the Rust shell. After a pause longer than its service interval, the consensus module's Aeron client closed itself, and the module kept running with it, where Java's agent terminates ("unexpected Aeron close"). Its member never came back.
 

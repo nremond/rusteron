@@ -12,7 +12,7 @@
 
 use std::time::{Duration, Instant};
 
-use rusteron_cluster::client::{AeronCluster, ClientContext, EgressListener};
+use rusteron_cluster::client::io::{AeronCluster, ClientContext, EgressListener};
 use rusteron_cluster_interop::ingress_endpoints;
 
 #[derive(Default)]

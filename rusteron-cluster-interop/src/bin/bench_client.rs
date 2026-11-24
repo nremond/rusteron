@@ -12,7 +12,7 @@
 use std::time::{Duration, Instant};
 
 use hdrhistogram::Histogram;
-use rusteron_cluster::client::{AeronCluster, ClientContext, EgressListener};
+use rusteron_cluster::client::io::{AeronCluster, ClientContext, EgressListener};
 use rusteron_cluster_interop::{bench::report_line, ingress_endpoints};
 
 struct Echoes {

@@ -6,12 +6,12 @@
 
 use std::collections::{BTreeSet, HashMap, VecDeque};
 
-use rusteron_cluster_core::recording_log::RecordingLog;
-use rusteron_consensus_core::backup::{
+use rusteron_cluster::cluster_backup_agent::{
     Action, ArchiveConfig, ArchiveId, BackupCounter, ClusterBackupAgent, Config, Event, FixedCredentials, Io, Ports,
     SourceType, State,
 };
-use rusteron_consensus_core::io::{Offer, RecordingCounter};
+use rusteron_cluster::consensus_module_agent::ports::{Offer, RecordingCounter};
+use rusteron_cluster::recording_log::RecordingLog;
 
 use crate::archive::{Message, SimArchive, endpoint_of};
 use crate::member_of_endpoint;
@@ -320,7 +320,7 @@ impl SimBackup {
         r.agent.on_tick(EPOCH_MS + now_ms);
         self.deliver();
         if let Some(r) = self.running.as_mut() {
-            for _ in 0..rusteron_consensus_core::backup::CONSENSUS_FRAGMENT_LIMIT {
+            for _ in 0..rusteron_cluster::cluster_backup_agent::CONSENSUS_FRAGMENT_LIMIT {
                 let Some(bytes) = r.consensus_inbox.pop_front() else {
                     break;
                 };

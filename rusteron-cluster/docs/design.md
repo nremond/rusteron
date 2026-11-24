@@ -5,7 +5,7 @@ Aeron Cluster re-implemented in Rust, in this fork of rusteron, wire- and on-dis
 | | |
 |---|---|
 | **Status** | M1 done, 2026-10-27. A Rust service runs in a Rust container beside a Java service on a Java 1.53.3 consensus module and archive, over Aeron's C media driver: started, joined, snapshotted, restarted from its snapshot, through a leader's failover, terminated. Every scenario's traces match the Java twin's line for line, and the container's part of every snapshot is Java's bytes; the six scenarios passed 20 times in a row, 120 runs, none failed, on macOS (arm64) and on Linux (x86_64) (§5). Measured on 2026-10-28, one node: the Rust container is at parity with Java's, applying the log 1.0–1.4 µs after append at p50 and answering a client in 9.2–9.9 µs round trip at p50, with p99.99 and maxima mostly shorter (§6). |
-| **Code** | `rusteron-cluster-codecs` (Aeron's SBE codecs, generated, checked against Java's bytes), `rusteron-cluster-core` (the container as a sans-IO state machine: `service`, plus `log`, `position`, `counters`, `markfile`, and a `testkit`), `rusteron-cluster` (the shell: `container.rs`, `markfile.rs`), `rusteron-cluster-interop` (the Rust test service, `rust_service_node`, the Java side, `scripts/`) |
+| **Code** | `rusteron-cluster` (Aeron's SBE codecs, generated, checked against Java's bytes), `rusteron-cluster` (the container as a sans-IO state machine: `service`, plus `log`, `position`, `counters`, `markfile`, and a `testkit`), `rusteron-cluster` (the shell: `container.rs`, `markfile.rs`), `rusteron-cluster-interop` (the Rust test service, `rust_service_node`, the Java side, `scripts/`) |
 | **Plan** | Re-implement Aeron Cluster one piece at a time, each replacing its Java twin inside a working Java cluster, Java the oracle at every step: M0 foundations, M1 service container (this), M2 archive server, M3 consensus module, M4 cluster client, M5 the cluster backup and a node with no JVM, M6 operations. |
 | **Licence** | The four crates are Apache-2.0 only, as Aeron is: they are derived from its schemas and behaviour (`NOTICE` in each). rusteron's own crates stay MIT OR Apache-2.0. |
 
@@ -32,12 +32,12 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 | The log | Joined with `alias=log-sc-<id>`, its image required to join at the service's position; polled up to the commit-position counter (type 203), 50 fragments a poll, reassembled as `BoundedLogAdapter` does, each message at the position after its last frame; ended at the next join's position, or end of stream. Cluster actions and new terms use the position in their message, as Java does. |
 | Recovery | The recovery-state counter (type 204) names the snapshot each service starts from; it is replayed from position 0 on IPC stream 103. |
 | Snapshots | Taken at exactly the request's position, the log waiting: an exclusive publication (`aeron:ipc?alias=snapshot`, stream 106) recorded by the local archive, `SnapshotMarker` BEGIN (type id 2), the client sessions in id order, END, then the service's own bytes; acked once the recording reaches the publication's position. |
-| Mark file | `cluster-mark-service-<id>.dat` in the cluster's directory: an 8 KiB header (SBE header, `MarkFileHeader`), then Agrona's distinct error log; the activity timestamp refreshed every second, the version written last, a null activity at stop. A live one is not started over: one whose writer holds the lock file beside it (`cluster-mark-service-<id>.lck`, with the writer's pid and start time), or, with no lock naming its writer, one active within 10 s (`rusteron-cluster-core::markfile::owner`). A writer killed is proven gone by its released lock, and is replaced at once. |
+| Mark file | `cluster-mark-service-<id>.dat` in the cluster's directory: an 8 KiB header (SBE header, `MarkFileHeader`), then Agrona's distinct error log; the activity timestamp refreshed every second, the version written last, a null activity at stop. A live one is not started over: one whose writer holds the lock file beside it (`cluster-mark-service-<id>.lck`, with the writer's pid and start time), or, with no lock naming its writer, one active within 10 s (`rusteron-cluster::markfile::owner`). A writer killed is proven gone by its released lock, and is replaced at once. |
 
 ## 3. The design
 
 ```text
-                 rusteron-cluster (shell, one thread)                rusteron-cluster-core (sans-IO)
+                 rusteron-cluster (shell, one thread)                rusteron-cluster (sans-IO)
  C media driver ◄─ Aeron C client (conductor invoked on this thread)
    stream 104 ────► poll ─────────────────────────────► on_cm_message, after_cm_poll
    log image  ────► bounded_controlled_poll ──────────► on_log_fragment ─► ClusteredService
@@ -50,7 +50,7 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
    mark file  ◄──── pwrite ◄────────────────────────── MemberId, Error, Stop
 ```
 
-**The core** (`rusteron-cluster-core::service::Container`) owns every position: the log's, the max log position, the ack id, termination and requested-ack positions, the snapshot's, the reassembly buffer. The shell reports only what it observes: the commit counter's value, an image's status, a recording's position, the outcome of an offer. Time enters through `on_tick` alone; the service's own clock is the log's timestamp (`Cx::time`).
+**The core** (`rusteron-cluster::service::Container`) owns every position: the log's, the max log position, the ack id, termination and requested-ack positions, the snapshot's, the reassembly buffer. The shell reports only what it observes: the commit counter's value, an image's status, a recording's position, the outcome of an offer. Time enters through `on_tick` alone; the service's own clock is the log's timestamp (`Cx::time`).
 
 **The service** implements `ClusteredService`. Callbacks that may not act on the cluster get a `ReadCx` (start, role change, snapshot, termination, background work); the others a `Cx`, through which they answer clients, send service messages, schedule and cancel timers, close sessions. What a callback sends is staged, and kept only once it returns `Apply::Done`: on `Apply::Retry` the entry is delivered again later and what was staged is discarded, so a service can push onto a full ring without blocking. Answers are staged in one reused buffer, and on `Done` go straight into the session's publication, its header and payload as Aeron's two-part offer takes them, through a sink the shell hands `on_log_fragment`: no allocation, no wait for the end of the duty cycle. Only an answer the publication refuses is copied into its session's queue, and the session's next answers queue behind it.
 
@@ -75,9 +75,9 @@ The container honours Java 1.53.3's `ClusteredServiceAgent`, read from the sourc
 
 ## 5. Tests
 
-**Codecs** (`rusteron-cluster-codecs/tests/golden.rs`, 18 tests): every message the container reads or writes, and the mark file's header, written by Aeron 1.54.2's own Java codecs (`java/GoldenCodecs.java`), decodes in Rust to the values Java set and encodes back to the same bytes. A field new in version 17 reads as unset from an older message.
+**Codecs** (`rusteron-cluster/tests/golden.rs`, 18 tests): every message the container reads or writes, and the mark file's header, written by Aeron 1.54.2's own Java codecs (`java/GoldenCodecs.java`), decodes in Rust to the values Java set and encodes back to the same bytes. A field new in version 17 reads as unset from an older message.
 
-**The core** (`rusteron-cluster-core`, 22 unit tests, 11 container tests) against the testkit: a log writer that frames messages as a publication does, the consensus module's messages, a fake consensus module holding acks to Java's rule. A whole life through a snapshot and termination; a restart from that snapshot; a snapshot cut short; a refused join tried again; 1,000 timers under refusals arriving in order; a full queue holding the log; an answer offered in the poll that applied its message; a refused answer offered again, in its place, with the session's next answers behind it; a follower's egress mocked; the log ended at the next join. A property test (200 cases): logs of random messages up to 6,000 bytes, framed at MTUs of 1,408 to 8,192, committed a few at a time, polled a few fragments at a time, with random retries: each message applied once, in order, at the position after its last frame, and what a refused delivery sent discarded.
+**The core** (`rusteron-cluster`, 22 unit tests, 11 container tests) against the testkit: a log writer that frames messages as a publication does, the consensus module's messages, a fake consensus module holding acks to Java's rule. A whole life through a snapshot and termination; a restart from that snapshot; a snapshot cut short; a refused join tried again; 1,000 timers under refusals arriving in order; a full queue holding the log; an answer offered in the poll that applied its message; a refused answer offered again, in its place, with the session's next answers behind it; a follower's egress mocked; the log ended at the next join. A property test (200 cases): logs of random messages up to 6,000 bytes, framed at MTUs of 1,408 to 8,192, committed a few at a time, polled a few fragments at a time, with random retries: each message applied once, in order, at the position after its last frame, and what a refused delivery sent discarded.
 
 **Against Java** (`rusteron-cluster-interop`, `scripts/differential.sh`): a Java 1.53.3 consensus module and archive per node, the Rust test service as service 0 and its Java twin (`OracleService.java`, the same logic) as service 1 of the same log, each node on its own C media driver, a Java client. Every scenario sends 1,000 messages, snapshots through `ClusterTool`, sends 1,000 more, then:
 
@@ -175,7 +175,7 @@ Not measured here: replication. On one node the commit is the local archive reco
 
 - **rusteron's `get_counter_key` stops at the key's first zero byte** (`aeron_custom.rs`), so binary keys come back short. The snapshot's recording counter looked gone, the container acked the snapshot without a recording, and the consensus module, logging "service=0 failed to take snapshot", dropped the snapshot from its recording log. The container checks registration ids now; the fix belongs in rusteron (return the whole key, `AERON_COUNTER_MAX_KEY_LENGTH` bytes), to be proposed upstream.
 - **Java's default app version is 0.0.1**, not 0: the markers differed by that field until the defaults agreed.
-- **A container restarted within 10 s of a kill refuses its own live mark file**, as Java's archive refuses its own: the restart waits out the liveness timeout, Aeron's own rule. Since 2026-11-24, a lock beside each Rust mark file proves a killed writer gone, and nothing is waited for (`rusteron-cluster-core::markfile::owner`).
+- **A container restarted within 10 s of a kill refuses its own live mark file**, as Java's archive refuses its own: the restart waits out the liveness timeout, Aeron's own rule. Since 2026-11-24, a lock beside each Rust mark file proves a killed writer gone, and nothing is waited for (`rusteron-cluster::markfile::owner`).
 - **The consensus module's last termination notice can find no one.** `ConsensusModuleAgent.onClose` sends its services a termination position once more as it closes; when both have already acked theirs and exited, the offer fails with `NOT_CONNECTED` and it logs a warning. Timing, and the same with Java's own services; seen once in 162 runs, on Linux.
 - In the harness: a node killed without its media driver keeps answering for its endpoints until the driver's client liveness timeout, so a client connecting just after a failover waited on the dead leader; a Java node whose launch failed could not exit, its shutdown barrier waiting to be closed.
 
@@ -196,7 +196,7 @@ Building Aeron C needs CMake, and a JDK older than 27 for Aeron's Gradle (25 wor
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 BUILD_JAVA_HOME=$JAVA_HOME
-cargo test -p rusteron-cluster-codecs -p rusteron-cluster-core -p rusteron-cluster
+cargo test -p rusteron-cluster -p rusteron-cluster -p rusteron-cluster
 cargo build -p rusteron-media-driver --bin media_driver --features static
 cargo build -p rusteron-cluster-interop --features static
 SCENARIO=failover rusteron-cluster-interop/scripts/differential.sh 3 1000

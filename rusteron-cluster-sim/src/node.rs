@@ -5,19 +5,19 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 
 use rusteron_archive::archive_conductor::Offer;
-use rusteron_cluster_core::log::{Fragment, PollAction};
-use rusteron_cluster_core::node_state::{self, NodeState};
-use rusteron_cluster_core::position::UNFRAGMENTED;
-use rusteron_cluster_core::recording_log::RecordingLog;
-use rusteron_consensus_core::config::Config;
-use rusteron_consensus_core::io::{
+use rusteron_archive::fragment_assembler::{Fragment, PollAction};
+use rusteron_archive::logbuffer::UNFRAGMENTED;
+use rusteron_cluster::consensus_module::context::Config;
+use rusteron_cluster::consensus_module_agent::ports::{
     Action, CounterId, EgressId, Io, Ports, RecordingCounter, SubscriptionId, offer_result,
 };
-use rusteron_consensus_core::log;
-use rusteron_consensus_core::module::{
+use rusteron_cluster::consensus_module_agent::{
     CONSENSUS_FRAGMENT_LIMIT, ConsensusModule, INGRESS_FRAGMENT_LIMIT, LOG_FRAGMENT_LIMIT, Poll,
 };
-use rusteron_consensus_core::sessions::IngressImage;
+use rusteron_cluster::log_publisher;
+use rusteron_cluster::node_state_file::{self, NodeState};
+use rusteron_cluster::recording_log::RecordingLog;
+use rusteron_cluster::session_manager::IngressImage;
 
 use crate::archive::{Message, ReplayTarget, SimArchive, TERM_LENGTH, endpoint_of, session_id_of};
 use crate::service::{ServiceSnapshot, SimService};
@@ -169,7 +169,7 @@ impl Ports for SimPorts {
         };
         let bytes = parts.concat();
         let start = publication.position;
-        let end = log::position_after(start, bytes.len());
+        let end = log_publisher::position_after(start, bytes.len());
         publication.position = end;
         let message = Message { start, end, bytes };
         let session_id = publication.session_id;
@@ -259,7 +259,7 @@ impl Ports for SimPorts {
             return Offer::NotConnected;
         };
         let start = *position;
-        let end = log::position_after(start, message.len());
+        let end = log_publisher::position_after(start, message.len());
         *position = end;
         let message = Message {
             start,
@@ -456,7 +456,7 @@ impl SimNode {
     pub fn new(index: usize, config: Config, session_seed: i32) -> Self {
         let (_, bytes) = NodeState::create();
         let mut node_state_file = bytes;
-        node_state_file.resize(node_state::FILE_LENGTH, 0);
+        node_state_file.resize(node_state_file::FILE_LENGTH, 0);
         Self {
             index,
             member_id: config.member_id,

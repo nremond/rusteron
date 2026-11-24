@@ -5,7 +5,7 @@ The third milestone of Aeron Cluster in Rust (see `design.md` for the service co
 | | |
 |---|---|
 | **Status** | M3, 2026-10-30. A node's consensus module in Rust, alone or among Java's: elections, replication, catch-up, sessions, timers, snapshots and termination. Every interop scenario passes on every mix of Rust and Java modules; Aeron's own `ClusterTest` passes every case in scope; the Jepsen suite's scenarios pass on Rust members; the deterministic simulator runs 480,000 seeds of faults without a failure, 140,000 of them with partitions that hold what they cut off; an application's engine commits on Rust modules at parity with Java's. Backups are answered and standbys' snapshots taken in and restarted from, as Java's open-source module does (§4): an application's standby runs beside Rust members through fault-injection runs, and spares them the snapshot pause as it does Java's (§6). |
-| **Code** | `rusteron-consensus-core` (the module: `module`, `module/election.rs`, `module/peers.rs`, `module/standby.rs`, sessions, timers, pending service messages, the module's snapshot, a testkit); `rusteron-cluster-core` (recording log, node state, mark file, counters); `rusteron-cluster` (the shell, binary `consensus_module`); `rusteron-cluster-sim` (the simulator); `rusteron-cluster-interop` (differential scenarios, the Jepsen suite, Aeron's own tests). |
+| **Code** | `rusteron-cluster` (the module: `module`, `module/election.rs`, `module/peers.rs`, `module/standby.rs`, sessions, timers, pending service messages, the module's snapshot, a testkit); `rusteron-cluster` (recording log, node state, mark file, counters); `rusteron-cluster` (the shell, binary `consensus_module`); `rusteron-cluster-sim` (the simulator); `rusteron-cluster-interop` (differential scenarios, the Jepsen suite, Aeron's own tests). |
 | **Licence** | Apache-2.0 only, as Aeron: derived from its schemas and behaviour. |
 
 ---
@@ -24,7 +24,7 @@ Out of scope: taking and sending standby snapshots (a standby's work: Aeron Prem
 
 ## 3. The design
 
-**The core** (`rusteron-consensus-core`, `forbid(unsafe_code)`) is Java's `ConsensusModuleAgent` and `Election` as one state machine. Time enters once per duty cycle; randomness comes from a seeded generator. Events go in (`on_consensus_fragment`, `on_ingress_fragment`, `on_log_fragment`, service and archive messages, `on_io` completions); the offers Java branches on at once go through a `Ports` trait; slower work leaves as `Action`s. Java's blocking waits are explicit states; its exceptions that restart an election are `Fault::Error`, or `Fault::Warning` where Java gives them the WARN category, its fatal ones `Fault::Terminate`.
+**The core** (`rusteron-cluster`, `forbid(unsafe_code)`) is Java's `ConsensusModuleAgent` and `Election` as one state machine. Time enters once per duty cycle; randomness comes from a seeded generator. Events go in (`on_consensus_fragment`, `on_ingress_fragment`, `on_log_fragment`, service and archive messages, `on_io` completions); the offers Java branches on at once go through a `Ports` trait; slower work leaves as `Action`s. Java's blocking waits are explicit states; its exceptions that restart an election are `Fault::Error`, or `Fault::Warning` where Java gives them the WARN category, its fatal ones `Fault::Terminate`.
 
 **The shell** (`rusteron-cluster::consensus`, binary `consensus_module`) runs it on one thread with the C client's conductor invoked there, as the service container's shell does, with Java's `ConsensusModule.Context` flags.
 
@@ -93,7 +93,7 @@ Where Java's code would loop or throw, the module does neither:
 
 ## 5. Tests
 
-- **Unit tests** (`rusteron-consensus-core`): the module on the testkit's fake ports, archive, services and members; Java's `ElectionTest` and `ConsensusModuleAgentTest` scenarios ported, and one or two tests per rule of §4.
+- **Unit tests** (`rusteron-cluster`): the module on the testkit's fake ports, archive, services and members; Java's `ElectionTest` and `ConsensusModuleAgentTest` scenarios ported, and one or two tests per rule of §4.
 - **The simulator** (`rusteron-cluster-sim`, its README): three members with their archives, services and a client in virtual time, under crashes, partitions, clock jumps and snapshots; invariants on every step. Java's rules fail 8 seeds in 1,000; the module's, none of 340,000 (40,000 of them with faults for 60 s), nor of 140,000 more whose partitions hold what they cut off (`--held`). Every seed that failed on the way is a regression test.
 - **Interop** (`rusteron-cluster-interop/scripts/differential.sh`): Java nodes with Rust and Java services on one log, the consensus module Java's or Rust's per node (`CM_NODES`): basic, restart, timers, marks, dead service, failover, the leader killed with entries in flight, a follower started again from an empty log, quorum lost and regained, a snapshot under load. Every scenario passes on every mix: `repeat.sh` ran the ten in a row 10 times on Rust modules alone, 5 times with Rust's on node 0 only and on nodes 1 and 2, and 3 times on Java's alone.
 - **Jepsen** (`rusteron-cluster-interop/jepsen`): Elle's list-append on three members under random faults and two staged scenarios that lose entries on Java; checks for truncation below the commit position, liveness after the heal, and every member rejoining. All pass on Rust members.

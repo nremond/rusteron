@@ -21,7 +21,7 @@
 
 use std::io::{BufRead, Write};
 
-use rusteron_cluster::client::{
+use rusteron_cluster::client::io::{
     AdminRequestType, AdminResponseCode, AeronCluster, ClientContext, ClientError, CredentialsSupplier, EgressListener,
     EventCode,
 };

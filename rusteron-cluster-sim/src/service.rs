@@ -6,13 +6,13 @@
 
 use std::collections::BTreeMap;
 
-use rusteron_cluster_codecs::cluster::{
+use rusteron_cluster::cluster_counters::RecoveryState;
+use rusteron_cluster::codecs::cluster::{
     WriteBuf, boolean_type::BooleanType, cluster_action::ClusterAction, join_log_codec, request_service_ack_codec,
     service_ack_codec, service_termination_position_codec,
 };
-use rusteron_cluster_core::counters::RecoveryState;
-use rusteron_consensus_core::codec;
-use rusteron_consensus_core::log::{self, LogMessage};
+use rusteron_cluster::codecs::message;
+use rusteron_cluster::log_publisher::{self, LogMessage};
 
 use crate::archive::SimArchive;
 
@@ -70,9 +70,9 @@ pub struct SimService {
 }
 
 fn ack(service_id: i32, ack_id: i64, log_position: i64, relevant_id: i64) -> Vec<u8> {
-    let mut out = vec![0u8; codec::HEADER_LENGTH + service_ack_codec::SBE_BLOCK_LENGTH as usize];
+    let mut out = vec![0u8; message::HEADER_LENGTH + service_ack_codec::SBE_BLOCK_LENGTH as usize];
     service_ack_codec::ServiceAckEncoder::default()
-        .wrap(WriteBuf::new(&mut out), codec::HEADER_LENGTH)
+        .wrap(WriteBuf::new(&mut out), message::HEADER_LENGTH)
         .header(0)
         .parent()
         .expect("an encoder")
@@ -161,10 +161,10 @@ impl SimService {
             out.push(self.ack(state.log_position, client_id));
         }
         for message in to_services {
-            let Ok(h) = codec::header(message) else {
+            let Ok(h) = message::header(message) else {
                 continue;
             };
-            let header = || codec::header_decoder(message);
+            let header = || message::header_decoder(message);
             match h.template_id {
                 join_log_codec::SBE_TEMPLATE_ID => {
                     let d = join_log_codec::JoinLogDecoder::default().header(header(), 0);
@@ -222,9 +222,9 @@ impl SimService {
                     },
                 );
                 self.position = end;
-                match log::decode(&m.bytes) {
+                match log_publisher::decode(&m.bytes) {
                     Ok(LogMessage::SessionMessage { .. }) => {
-                        let payload = &m.bytes[log::SESSION_HEADER_LENGTH.min(m.bytes.len())..];
+                        let payload = &m.bytes[log_publisher::SESSION_HEADER_LENGTH.min(m.bytes.len())..];
                         if payload.len() >= 16
                             && u64::from_le_bytes(payload[..8].try_into().expect("8 bytes")) == CLIENT_MESSAGE_TAG
                         {
@@ -237,7 +237,7 @@ impl SimService {
                         log_position,
                         flags,
                         ..
-                    }) if flags == log::CLUSTER_ACTION_FLAGS_DEFAULT => {
+                    }) if flags == log_publisher::CLUSTER_ACTION_FLAGS_DEFAULT => {
                         let recording_id = archive.new_stopped_recording(SERVICE_SNAPSHOT_STREAM_ID);
                         snapshots.insert(
                             recording_id,

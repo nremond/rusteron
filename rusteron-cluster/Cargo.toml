@@ -5,7 +5,7 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/nremond/rusteron"
 readme = "README.md"
-description = "Aeron Cluster's clustered service container on Aeron's C client: runs a Rust service against Aeron Cluster's consensus module, wire-compatible with Aeron 1.54.2."
+description = "Aeron Cluster in Rust on Aeron's C client: the consensus module, the clustered service container, the client and the backup, as Aeron's io.aeron.cluster lays them out, wire- and on-disk-compatible with Aeron 1.54.2."
 keywords = ["aeron", "aeron-cluster", "consensus", "low-latency"]
 categories = ["network-programming"]
 
@@ -13,10 +13,14 @@ categories = ["network-programming"]
 default = []
 # Links Aeron C statically, as rusteron-archive's own feature.
 static = ["rusteron-archive/static"]
+# Fakes of a consensus module's and a service's surroundings, for tests.
+testkit = ["rusteron-archive/testkit"]
 
 [dependencies]
 ctrlc = { workspace = true, features = ["termination"] }
 log = { workspace = true }
 rusteron-archive = { path = "../rusteron-archive", version = "0.3.2" }
-rusteron-cluster-core = { path = "../rusteron-cluster-core", version = "0.1.0" }
-rusteron-consensus-core = { path = "../rusteron-consensus-core", version = "0.1.0" }
+
+[dev-dependencies]
+proptest = { workspace = true }
+rusteron-cluster = { path = ".", features = ["testkit"] }

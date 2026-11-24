@@ -1,4 +1,4 @@
-//! A cluster client: rusteron's own (`rusteron_cluster_core::client`), its
+//! A cluster client: rusteron's own (`rusteron_cluster::client`), its
 //! Aeron the simulator's network. It connects as Java's `AeronCluster` does,
 //! through a publication to every member's ingress, follows redirects and
 //! new leaders, sends keepalives when it has nothing to send, and closes when
@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use rusteron_cluster_core::client::{
+use rusteron_cluster::client::{
     Added, CLOSED, Client, ClientConfig, ClientPorts, ClientState, Connect, EgressListener, Handle, NOT_CONNECTED,
     PollAction,
 };

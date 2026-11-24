@@ -1,8 +1,8 @@
 # rusteron-cluster
 
-Aeron Cluster's clustered service container on Aeron's C client: runs a Rust service against Aeron Cluster's consensus module, wire- and on-disk-compatible with Aeron 1.54.2. The archive can be Rust's (`rusteron-archive`). The consensus module is being rebuilt in Rust, with Java as the oracle: its core is `rusteron-consensus-core`, and its shell the `consensus_module` binary here, which runs a node of a cluster of any size, beside Java's nodes or Rust's.
+Aeron Cluster's clustered service container on Aeron's C client: runs a Rust service against Aeron Cluster's consensus module, wire- and on-disk-compatible with Aeron 1.54.2. The archive can be Rust's (`rusteron-archive`). The consensus module is being rebuilt in Rust, with Java as the oracle: its core is `rusteron-cluster`, and its shell the `consensus_module` binary here, which runs a node of a cluster of any size, beside Java's nodes or Rust's.
 
-The container's logic is `rusteron-cluster-core`'s, a sans-IO state machine; this crate is its shell: one thread running the duty cycle and the Aeron client's conductor, the log up to the commit position, snapshots through the local archive, the mark file.
+The container's logic is `rusteron-cluster`'s, a sans-IO state machine; this crate is its shell: one thread running the duty cycle and the Aeron client's conductor, the log up to the commit position, snapshots through the local archive, the mark file.
 
 ```rust,no_run
 use rusteron_cluster::*;
