@@ -143,6 +143,32 @@ How it got there, three runs of the same bench the same morning:
 - **The first layout put the Rust service on the other core complex** from its media driver and consensus module, which the Java service shared: every message crossed between the two L3 caches on its way in and its answer on its way out. That was nearly all of the 0.4–0.5 µs Rust gave away at the median then.
 - **Offering answers straight into the publication** rather than queueing them for the end of the duty cycle moved the median by at most 0.2 µs. That run also had stalls of 1.9 to 4.0 ms at 100k and 200k/s, mostly in both services' apply at once, so upstream of either; they did not come back in the next run.
 
+**On Aeron 1.54.2** (2026-11-24): the same bench and layout on the same machine, Java 1.54.2's node, rusteron at the port to 0.3 (`bc5024f`), three rounds:
+
+| Rate | Measure | p50 | p99 | p99.9 | p99.99 | max |
+|---|---|---|---|---|---|---|
+| 1k/s | apply, Rust | 1.2–1.3 | 2.5–2.7 | 5.0–5.9 | 5.9–18.3 | 8.7–50.9 |
+| | apply, Java | 1.2–1.3 | 2.5–2.7 | 4.8–8.7 | 9.6–31.6 | 15.0–50.9 |
+| | round trip, Rust answering | 9.7–9.8 | 11.9–12.0 | 14.7–15.8 | 22.5–28.5 | 72.9–133 |
+| | round trip, Java answering | 9.8–10.0 | 11.7–14.5 | 16.3–17.0 | 44.8–51.9 | 80.0–124 |
+| 10k/s | apply, Rust | 1.0–1.1 | 2.1–2.2 | 4.3–4.4 | 5.3–5.7 | 49.2–88.8 |
+| | apply, Java | 1.0–1.1 | 2.1–2.2 | 2.7–3.8 | 4.9–6.5 | 66.4–88.8 |
+| | round trip, Rust answering | 9.2–9.4 | 11.0–12.1 | 12.9–14.5 | 15.8–26.9 | 96.4–118 |
+| | round trip, Java answering | 9.2–9.3 | 11.2–12.8 | 13.6–14.7 | 23.8–52.5 | 142–195 |
+| 100k/s | apply, Rust | 1.0–1.2 | 2.0–2.2 | 4.1–4.3 | 7.6–14.4 | 140–240 |
+| | apply, Java | 1.0–1.2 | 2.0–2.2 | 2.7–3.7 | 10.3–29.9 | 187–303 |
+| | round trip, Rust answering | 9.1–9.3 | 11.5–11.7 | 13.7–14.0 | 33.8–53.0 | 285–293 |
+| | round trip, Java answering | 9.1–9.2 | 11.3–11.8 | 13.4–14.3 | 34.1–54.5 | 271–289 |
+| 200k/s | apply, Rust | 1.0–1.1 | 2.0–2.1 | 3.0–4.0 | 17.6–26.9 | 150–158 |
+| | apply, Java | 1.0 | 2.0 | 3.1–4.1 | 24.8–35.6 | 155–217 |
+| | round trip, Rust answering | 9.2 | 11.7–12.4 | 14.0–14.8 | 40.4–59.3 | 196–242 |
+| | round trip, Java answering | 9.1–9.2 | 11.7–12.4 | 14.1–14.6 | 48.9–64.8 | 326–347 |
+
+- **Still at parity.** The medians and p99 are 1.53.3's, and Rust's are within 0.1–0.2 µs of Java's at every rate.
+- **The far tails moved for both.** At 100k and 200k/s, p99.99 came out at 34–65 µs, Rust's and Java's alike, where 1.53.3's runs had 17–39. Both services moved together, so the container is not the cause.
+- **Rust's worst cases are shorter at 10k and 200k/s** (96–118 against 142–195 µs, 196–242 against 326–347). At 1k and 100k/s they now overlap Java's, where 1.53.3's runs had them shorter.
+- **Rust's apply p99.9 is higher than Java's at 10k and 100k/s** (4.3–4.4 against 2.7–3.8 µs, 4.1–4.3 against 2.7–3.7), as it was at 10k/s on 1.53.3. At 1k and 200k/s the two overlap.
+
 Not measured here: replication. On one node the commit is the local archive recording the entry; across machines and zones the network dominates, which is the consensus module's and the transport's to answer (M3), not the container's. Nor is the cost of isolating cores, setting the governor to `performance` or turning SMT off, which would lower every figure alike.
 
 ## 7. What the first runs found
@@ -229,4 +255,4 @@ Aeron C 1.54's fail-fast client (every call refused once a fatal error has close
 
 The fork's GitHub workflow (Valgrind, the sanitizers, macOS) passes on the port.
 
-Not rerun on 1.54.2: the measurements of §6, `consensus.md`, `client.md` and the archive's design.
+§6's measurements were rerun on 1.54.2 (2026-11-24): still at parity. Not rerun: those of `consensus.md`, `client.md` and the archive's design. They went through an application's benchmark, each comparing one of its Java parts with the Rust one, and that application no longer has the Java parts.

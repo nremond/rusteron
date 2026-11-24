@@ -115,6 +115,8 @@ Where Java's code would loop or throw, the module does neither:
 
 ## 6. Measurements
 
+Measured on Java 1.53.3 and not rerun on 1.54.2: the application's benchmark they went through no longer has the Java parts compared (`design.md` §10).
+
 An application's commits on a 16-core Linux workstation: three nodes on one machine, each with the application's Rust engine as its service, rusteron's archives and a Java media driver, busy-spinning. Java's consensus module and the Rust one, three rounds interleaved; commands a second and median latency, offer to answer:
 
 | In flight | Log | Java's module | Rust module |

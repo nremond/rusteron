@@ -54,6 +54,8 @@ Out of scope: `tryClaim` (offers copy), the extension listeners for other schema
 
 ## 6. Measurements
 
+Measured on Java 1.53.3 and not rerun on 1.54.2: the application's benchmark they went through no longer has the Java parts compared (`design.md` §10).
+
 An application's commits on a 16-core Linux workstation: three members with its Rust engine, archives and module on Aeron's C driver, no JVM, busy-spinning with a thread for each driver agent. Its Java bench client against its Rust one on this client, each with a driver of its own on the client's cores, three rounds interleaved; commands a second and median latency, offer to answer:
 
 | In flight | Log | Java's client | Rust client |
