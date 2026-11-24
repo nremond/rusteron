@@ -1,6 +1,6 @@
 # Jepsen tests of Aeron Cluster
 
-Jepsen tests of three-member clusters running Elle's list-append workload, under random faults or staged scenarios. A member is either Java Aeron 1.53.3 or rusteron's Rust consensus module.
+Jepsen tests of three-member clusters running Elle's list-append workload, under random faults or staged scenarios. A member is either Java Aeron 1.54.2 or rusteron's Rust consensus module.
 - **Java** (`--impl java`): media driver, archive and consensus module in the member's JVM.
 - **Rust** (`--impl rust`): rusteron's C media driver, Rust archive and Rust consensus module, beside the JVM.
 
@@ -19,7 +19,7 @@ Either way, the service is Java's container, running `ListAppendService`. Client
 - **Nodes** are Docker containers n1..n3 (`scripts/cluster.sh`), at 10.77.0.11 onwards, on a bridge network whose host side, 10.77.0.1, is where Jepsen and its clients run.
 - **Their image is empty.** The host's `/usr` and `/etc` are mounted read-only, so a node runs the host's JDK and tools (`iptables`, `pkill`) and nothing is pulled or installed. The suite, the Maven repository and rusteron's `target/` are mounted read-only too. Each node's data is a tmpfs at `/data`.
 - **Commands** reach the nodes through `docker exec` (`docker.clj`), not SSH.
-- **Builds.** The Java side and the classpath come from Maven (`pom.xml`): Jepsen 0.3.14, Aeron 1.53.3. Rust nodes need rusteron's `media_driver`, `aeron_archive` and `consensus_module`, built with `--features static`.
+- **Builds.** The Java side and the classpath come from Maven (`pom.xml`): Jepsen 0.3.14, and the Aeron that `AERON_VERSION` names, 1.54.2 by default. Java members run any version Maven has. Rust members need 1.54.2, the version rusteron's crates follow, and rusteron's debug `media_driver`, `aeron_archive` and `consensus_module`, built with `--features static` (`cargo build --features static -p rusteron-media-driver -p rusteron-archive-server -p rusteron-cluster --bins`).
 - **Requirements:** Docker, Maven and a JDK of 21 or later on the host.
 
 ## What it checks
@@ -48,7 +48,21 @@ A transaction ends one of three ways:
   3. Reconnect Z to Y, which is still waiting to complete its T1.
   4. Heal everything.
 
-## Findings (2026-10-29)
+## Findings on Aeron 1.54.2 (2026-11-24)
+
+The same runs on 1.54.2: Java members once per scenario, Rust members twice. The Rust consensus module is the one with Raft's rules (below).
+
+| Scenario | Java 1.54.2 | Rust consensus module |
+|---|---|---|
+| `random`, 120 s | Valid | Valid, 2 runs |
+| `stale-leader` | Two members cut their logs from 70528 to 39232, below their commit position. No transaction succeeds after the heal, and every member is still in an election 20 s after it | Valid, 2 runs |
+| `stale-election` | No member cuts its log, but no transaction succeeds after the heal. n1 is leader of term 2 at commit 38048, while the other two, still in term 1 at 66976, are in an election | Valid, 2 runs |
+
+Elle's `:append` check passes in every run. Where Java fails, nothing succeeds after the heal, so no read can show the loss; `:truncation`, `:liveness` and `:rejoined` are the checks that catch it.
+
+aeron-io/aeron#2212, Java's fix for these losses, was merged on 2026-11-11, after 1.54.2: no release has it yet.
+
+## Findings on Aeron 1.53.3 (2026-10-29)
 
 | Scenario | Java 1.53.3 | Rust consensus module, as Java | Rust, Raft's rules (2026-10-30) |
 |---|---|---|---|

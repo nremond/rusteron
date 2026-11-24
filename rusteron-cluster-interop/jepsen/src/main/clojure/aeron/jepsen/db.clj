@@ -12,8 +12,13 @@
 
 (def aeron-dir "/dev/shm/aeron")
 
+(def aeron-version
+  "The Aeron the nodes and clients run: run.sh's AERON_VERSION."
+  (System/getProperty "aeron.version" "1.54.2"))
+
 (def classpath
-  "/opt/aeron-jepsen/target/classes:/opt/m2/io/aeron/aeron-all/1.53.3/aeron-all-1.53.3.jar")
+  (str "/opt/aeron-jepsen/target/classes"
+       ":/opt/m2/io/aeron/aeron-all/" aeron-version "/aeron-all-" aeron-version ".jar"))
 
 (def jvm-flags
   ["--add-opens" "java.base/jdk.internal.misc=ALL-UNNAMED"

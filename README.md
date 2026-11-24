@@ -86,6 +86,9 @@ Aeron's C client. A deterministic simulator drives the consensus module's core u
 - Ten scenarios, each on six setups mixing Java's and Rust's consensus modules, archives and
   clients.
 - The simulator: 20,000 seeds with faults and 5,000 with held links.
+- Jepsen with Elle, on three members: Rust members are valid under random partitions, kills and
+  pauses, and in two staged election scenarios where Java 1.54.2 members cut committed entries or
+  stop serving ([rusteron-cluster-interop/jepsen](rusteron-cluster-interop/jepsen/README.md)).
 - The standby, with no JVM: its state and log against the members', a member restarted from its
   snapshot, and a new cluster seeded from it.
 

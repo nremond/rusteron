@@ -222,4 +222,11 @@ Aeron C 1.54's fail-fast client (every call refused once a fatal error has close
 - **The fork's CI steps**: fmt, clippy with warnings denied, the doc tests, the release build and the workspace's 1,562 tests pass. The simulator runs 20,000 seeds with faults and 5,000 with held links, none failing.
 - **Found on the way**, besides the destination command above: a harness race. JavaNode closed its archive while the Rust module beside it could still be terminating, and that module then ended as failed, its archive gone. It failed 1 run in 10 of the mixed quorum-loss scenario, on 1.53.3 as on 1.54.2. JavaNode now waits for the module first, as a Java node closes its module before its archive: 20 runs out of 20 since.
 
-Not rerun on 1.54.2: the Jepsen suite (its Java side pinned to 1.53.3) and the measurements of §6, `consensus.md`, `client.md` and the archive's design. The fork's GitHub workflow (Valgrind, the sanitizers, macOS) runs once the port is pushed.
+**Jepsen on 1.54.2** (2026-11-24, `rusteron-cluster-interop/jepsen`, its Aeron now set by `AERON_VERSION`):
+- Rust members are valid in all six runs: random faults and the two staged election scenarios, twice each.
+- Java 1.54.2 members are valid under random faults, and fail both staged scenarios as 1.53.3 did. In one, two members cut their logs below their commit position; in the other, no transaction succeeds after the heal.
+- aeron-io/aeron#2212 fixes these in Java, but is in no release yet.
+
+The fork's GitHub workflow (Valgrind, the sanitizers, macOS) passes on the port.
+
+Not rerun on 1.54.2: the measurements of §6, `consensus.md`, `client.md` and the archive's design.

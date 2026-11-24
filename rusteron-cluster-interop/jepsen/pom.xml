@@ -13,6 +13,8 @@
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- run.sh sets it from AERON_VERSION. Rust members need the version rusteron's crates follow. -->
+    <aeron.version>1.54.2</aeron.version>
   </properties>
 
   <repositories>
@@ -26,7 +28,7 @@
     <dependency>
       <groupId>io.aeron</groupId>
       <artifactId>aeron-all</artifactId>
-      <version>1.53.3</version>
+      <version>${aeron.version}</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
