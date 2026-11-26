@@ -18,25 +18,37 @@
 //! - the cluster client: [`client`] (`io.aeron.cluster.client`);
 //! - the counters ([`cluster_counters`]) and the SBE codecs ([`codecs`]).
 //!
-//! A service on the container:
-//!
-//! ```no_run
-//! # use rusteron_cluster::*;
-//! # fn run<S: ClusteredService>(service: S) -> Result<(), ContainerError> {
-//! let ctx = ContainerContext::new("/dev/shm/aeron-node0", "/var/lib/cluster/node0");
-//! let exit = ServiceContainer::launch(ctx, service)?.run();
-//! # Ok(()) }
-//! ```
+//! With the `c-client` feature (the default), the shells run on Aeron's C
+//! client; without it, only the state machines, the files' formats and the
+//! codecs build, and no C is compiled.
 
+#![cfg_attr(
+    feature = "c-client",
+    doc = r#"
+A service on the container:
+
+```no_run
+# use rusteron_cluster::*;
+# fn run<S: ClusteredService>(service: S) -> Result<(), ContainerError> {
+let ctx = ContainerContext::new("/dev/shm/aeron-node0", "/var/lib/cluster/node0");
+let exit = ServiceContainer::launch(ctx, service)?.run();
+# Ok(()) }
+```
+"#
+)]
 #![deny(unsafe_code)]
 
 pub mod client;
+#[cfg(feature = "c-client")]
 pub mod cluster_backup;
 pub mod cluster_backup_agent;
+#[cfg(feature = "c-client")]
 pub mod cluster_control;
 pub mod cluster_counters;
 pub mod cluster_member;
+#[cfg(feature = "c-client")]
 pub mod cluster_tool;
+#[cfg(feature = "c-client")]
 pub mod cluster_tool_operator;
 pub mod codecs;
 pub mod consensus_adapter;
@@ -55,5 +67,6 @@ pub mod session_manager;
 pub mod testkit;
 pub mod timer_service;
 
+#[cfg(feature = "c-client")]
 pub use service::clustered_service_container::{ContainerContext, ContainerError, Exit, Idle, ServiceContainer};
 pub use service::*;

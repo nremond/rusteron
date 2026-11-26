@@ -2,6 +2,7 @@
 //! reads, those a consensus module allocates, and the layout of their keys
 //! and labels (`ClusterCounters`, `RecoveryState`, `RecordingPos` in Java).
 
+#[cfg(feature = "c-client")]
 pub mod io;
 
 /// The consensus module's state: `ConsensusModule.State`.

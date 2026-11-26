@@ -10,18 +10,41 @@ keywords = ["aeron", "aeron-cluster", "consensus", "low-latency"]
 categories = ["network-programming"]
 
 [features]
-default = []
+default = ["build-from-source"]
+# Aeron's C client, and the shells on it: the consensus module's, the backup's, the container's and the
+# client's, the counters and mark files on the driver, ClusterTool and the binaries. Without it only the
+# sans-IO state machines, the files' formats and the codecs build, and no C is compiled.
+c-client = ["rusteron-archive/c-client", "dep:ctrlc", "dep:libc"]
+# Builds Aeron C from source, as rusteron-archive's own feature.
+build-from-source = ["c-client", "rusteron-archive/build-from-source"]
+# Uses Aeron C precompiled, as rusteron-archive's own feature.
+precompile = ["c-client", "rusteron-archive/precompile"]
 # Links Aeron C statically, as rusteron-archive's own feature.
-static = ["rusteron-archive/static"]
+static = ["build-from-source", "rusteron-archive/static"]
 # Fakes of a consensus module's and a service's surroundings, for tests.
 testkit = ["rusteron-archive/testkit"]
 
 [dependencies]
-ctrlc = { workspace = true, features = ["termination"] }
-libc = "0.2"
+ctrlc = { workspace = true, features = ["termination"], optional = true }
+libc = { version = "0.2", optional = true }
 log = { workspace = true }
-rusteron-archive = { path = "../rusteron-archive", version = "0.3.2" }
+rusteron-archive = { path = "../rusteron-archive", version = "0.3.2", default-features = false }
 
 [dev-dependencies]
 proptest = { workspace = true }
-rusteron-cluster = { path = ".", features = ["testkit"] }
+rusteron-cluster = { path = ".", default-features = false, features = ["testkit"] }
+
+[[bin]]
+name = "consensus_module"
+path = "src/bin/consensus_module.rs"
+required-features = ["c-client"]
+
+[[bin]]
+name = "cluster_backup"
+path = "src/bin/cluster_backup.rs"
+required-features = ["c-client"]
+
+[[bin]]
+name = "cluster_tool"
+path = "src/bin/cluster_tool.rs"
+required-features = ["c-client"]

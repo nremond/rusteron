@@ -22,6 +22,7 @@
 
 pub mod cluster_mark_file;
 pub mod clustered_service;
+#[cfg(feature = "c-client")]
 pub mod clustered_service_container;
 pub mod consensus_module_proxy;
 mod decode;

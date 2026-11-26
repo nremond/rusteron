@@ -8,6 +8,7 @@
 //! timestamp with volatile loads: the version is written last when the header
 //! is new, and zeroed when the component stops.
 
+#[cfg(feature = "c-client")]
 pub mod io;
 
 use crate::codecs::mark::{

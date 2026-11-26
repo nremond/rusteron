@@ -19,6 +19,8 @@ wire- and on-disk-compatible with Aeron 1.54.2.
   now "(MIT OR Apache-2.0) AND Apache-2.0": the server is Apache-2.0 only, as Aeron.
 - Added `rusteron-system-tests`: scenarios beside Java Aeron 1.54.2, Jepsen, and a deterministic
   simulator of a cluster. Not published.
+- Added the `c-client` feature to `rusteron-archive` and `rusteron-cluster`, on by default: without it, their
+  pure-Rust parts build and no Aeron C is compiled.
 - Breaking: `rusteron-media-driver` is now `rusteron-driver`, and `rusteron-docker-samples` is
   `rusteron-samples`, as Aeron's `aeron-driver` and `aeron-samples`.
 - Valgrind runs only on the crates that call Aeron C.

@@ -32,6 +32,10 @@ fn run_gradle_build_if_missing(aeron_path: &Path) {
 }
 
 pub fn main() {
+    // Without the C client, only the crate's pure-Rust modules build: no bindings, no C.
+    if std::env::var_os("CARGO_FEATURE_C_CLIENT").is_none() {
+        return;
+    }
     rusteron_build_main(&RusteronBuildConfig {
         header_subdir: "aeron-archive/src/main/c",
         target_dynamic: "aeron_archive_c_client",

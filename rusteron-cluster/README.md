@@ -80,6 +80,8 @@ The scenarios beside Java's nodes, Jepsen and the simulator are in `rusteron-sys
 
 Aeron C is built from source, which needs CMake and, for its Gradle, a JDK older than 27 (`JAVA_HOME` and `BUILD_JAVA_HOME`). The `static` feature links it statically.
 
+The C client is the `c-client` feature, on by default. With `default-features = false`, only the sans-IO state machines, the files' formats, the counters' ids, the codecs and (with `testkit`) the test kits build, and no C is compiled: no CMake, no bindgen. The shells, ClusterTool and the binaries need `c-client`.
+
 ## Licence
 
 Apache-2.0, as Aeron: see `NOTICE`.

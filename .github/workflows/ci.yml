@@ -52,6 +52,11 @@ jobs:
           cargo test --doc
           cargo test --doc -p rusteron-client --features static
 
+      # The cluster's and the archive's state machines, file formats and codecs build and pass their tests
+      # without Aeron's C client: no cmake, no bindgen, no C compiled.
+      - name: Test the cluster without the C client
+        run: cargo test -p rusteron-cluster --no-default-features --features testkit
+
   memory-check:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     name: Memory Check (Valgrind)

@@ -16,6 +16,7 @@
 mod aeron_cluster;
 mod async_connect;
 pub mod codec;
+#[cfg(feature = "c-client")]
 pub mod io;
 
 pub use crate::codecs::cluster::{
